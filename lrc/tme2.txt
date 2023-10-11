@@ -1,0 +1,23 @@
+Compte rendu TME2
+Simon Liétar
+
+
+Exercice 1
+
+1.  1. Il n'y a qu'une feuille et elle est fermée, donc la formule est insatisfiable.
+    2. Il y a 5 feuilles ouvertes, et la négation a 4 feuilles fermées donc est insatisfiable, donc la formule est valide.
+    3. Les 2 feuilles sont fermées, donc la formule est insatisfiable.
+    4. Il y a 6 sur 8 feuilles ouvertes et la négation a 2 feuilles ouvertes, donc la formule est satisfiable.
+    5. Il y a 6 sur 9 feuilles ouvertes et la négation a 2 feuilles ouvertes, donc la formule est satisfiable.
+    6. Les 4 feuilles sont ouvertes, et la négation a 4 feuilles fermées donc est insatisfiable, donc la formule est valide.
+
+
+Exercice 2
+
+3. La prise de tamiflu n'est plus toujours recommandée dans ce cas car ¬(F1 ∧ F2 ∧ F3 ∧ F4 → tamiflu) est satisfiable, visible par une feuille ouverte qui est vraie si le patient a de la fièvre et une bronchite.
+
+
+Exercice 3
+
+3. Avec les trois pré-modèles P1 = a ∧ b ∧ c, P2 = a ∧ b et P3 = a et la formule F = P1 ∨ P2 ∨ P3 on a bien M(P1) ⊂ M(P2) ⊂ M(P3).
+4. Non il n'existe pas de lien entre le nombre de pré-modèles d'une formule car une formule redondante va avoir un grand nombre de pré-modèles mais un faible nombre de modèles car limité par le nombre de variables.

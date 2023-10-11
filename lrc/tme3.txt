@@ -1,0 +1,19 @@
+Compte rendu TME3
+Simon Liétar
+
+
+# Description des règles pour la question 3 de la partie vérification de modèles
+
+On crée d'abord l'opérateur `imp`, puis on ajoute une règle ajoutant `or not a b` à tous les nœuds qui contiennent la formule `imp a b`. On ajoute une second règle qui marque à vrai tous les nœuds qui contiennent la formule `or not a b` marquée à vrai. Enfin on ajoute ces règles aux stratégies top-down et bottom-up respectivement. De cette façon, on utilise les règles existantes pour `or` et `not` pour implémenter `imp`.
+
+
+# Question 3 de la partie satisfiabilité dans la logique K
+
+Pour montrer la validité de la formule ◻(p → q) → (◻p → ◻q), on montre que ¬◻(p → q) → (◻p → ◻q) est insatisfiable.
+
+
+# Algorithmes mis en oeuvre par LoTREC
+
+On procède en deux étapes pour la vérification de modèle. Lors le première étape (top-down), on décompose la formule en sous-formules plus simples grâce aux règles α et β et on transforme les formules contenant les opérateurs ◇ et ◻ en ajoutant leur opérandes aux mondes liés au monde actuel. On répète cela jusqu'à n'avoir que des formules atomiques, ce qui permet de facilement déterminer si celles-ci sont vraies ou non. Puis, lors de la second étape (bottom-up), on ré-assemble le résultat des sous-formules pour retrouver le retrouver le résultat des formules plus complexes. Pour les opérateurs ◇ et ◻, on vérifie respectivement qu'au moins un monde et que tous les mondes aient l'opérande vraie pour que la formule soit vraie. On répète cela jusqu'à avoir le résultat de la formule initiale.
+
+Pour vérifier la satisfiabilité, on crée un modèle de Kripke qui puisse satisfaire la formule donnée. L'opérateur ∨ duplique le modèle de Kripke en deux modèles, l'un où l'opérande gauche est vraie et l'autre ou l'opérande droite est vraie. L'opérateur ◇ cause la création d'un nouveau monde vers lequel pointe le monde actuel, où l'opérande est vraie. L'opérateur ◻ ajoute son opérande comme formule dans chaque monde accessible. La combinaison d'opérateurs ¬◻ est transformée en son équivelent ◇¬. Lorsqu'il existe un monde avec deux formules atomiques contradictoires, son modèle correspondant est une feuille fermée. La formule est satisfiable si au moins une feuille est ouverte.
