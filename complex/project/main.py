@@ -1,8 +1,13 @@
+from calendar import c
 from dataclasses import dataclass
 from math import cos, pi, sin
 from pathlib import Path
 import pickle
 from random import random
+from time import time_ns
+from matplotlib import cm, colors, pyplot as plt
+
+import numpy as np
 
 
 @dataclass
@@ -77,7 +82,7 @@ class Graph:
     return cls(edges, vertices)
 
 
-def coupling(graph: Graph):
+def cover_from_coupling(graph: Graph):
   vertices = set[int]()
 
   for a, b in graph.edges:
@@ -86,7 +91,7 @@ def coupling(graph: Graph):
 
   return vertices
 
-def greedy(input_graph: Graph):
+def cover_greedy(input_graph: Graph):
   graph = input_graph.copy()
   vertices = set[int]()
 
@@ -98,6 +103,59 @@ def greedy(input_graph: Graph):
     graph.remove_vertex(max_degree_vertex)
 
   return vertices
+
+
+p_values = [0, 0.25, 0.5, 0.75, 1]
+n_values = np.linspace(10, 500, 10, dtype=int)
+
+if True:
+  # (coupling, greedy), n, p
+  output = np.zeros((2, len(n_values), len(p_values)))
+
+  for p_index, p in enumerate(p_values):
+    for n_index, n in enumerate(n_values):
+      graph = Graph.random(n, p)
+
+      t0 = time_ns()
+      cover_from_coupling(graph)
+      t1 = time_ns()
+      cover_greedy(graph)
+      t2 = time_ns()
+
+      output[0, n_index, p_index] = (t1 - t0) * 1e-6
+      output[1, n_index, p_index] = (t2 - t1) * 1e-6
+
+    # if t1 - t0 > 1_000_000_0:
+    #   break
+
+  print(output)
+
+
+  with Path("out.pickle").open("wb") as file:
+    pickle.dump(output, file)
+else:
+  with Path("out.pickle").open("rb") as file:
+    output = pickle.load(file)
+
+
+fig, ax = plt.subplots()
+
+p_normalize = colors.Normalize(vmin=min(p_values), vmax=max(p_values))
+
+for p_index, p in enumerate(p_values):
+  ax.plot(n_values, output[0, :, p_index], color=cm.autumn(p_normalize(p)), label=f"Coupling (p={p})")
+
+for p_index, p in enumerate(p_values):
+  ax.plot(n_values, output[1, :, p_index], color=cm.winter(p_normalize(p)), label=f"Greedy (p={p})")
+# ax.plot(n_values, output[0, :, 0], label="Coupling")
+# ax.plot(n_values, output[1, :, 0], label="Greedy")
+ax.set_yscale('log')
+ax.set_xlabel("Nombre de sommets (n)")
+ax.set_ylabel("Temps d'exécution (ms)")
+ax.legend()
+
+fig.savefig("out.png")
+
 
 
 # g = Graph(
@@ -112,10 +170,10 @@ def greedy(input_graph: Graph):
 # graph: Graph = pickle.load(open("graph.pickle", "rb"))
 
 # graph.remove_vertex(1)
-graph = Graph.random(6, 0.5)
+# graph = Graph.random(6, 0.5)
 
-print(coupling(graph))
-print(greedy(graph))
+# print(cover_from_coupling(graph))
+# print(cover_greedy(graph))
 
 # print(graph)
 
@@ -124,5 +182,5 @@ print(greedy(graph))
 # print(g.degrees())
 # print(graph.draw())
 
-with (Path(__file__).parent / "out.svg").open("wt") as file:
-  file.write(graph.draw())
+# with (Path(__file__).parent / "out.svg").open("wt") as file:
+#   file.write(graph.draw())
