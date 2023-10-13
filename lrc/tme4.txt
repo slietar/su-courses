@@ -1,0 +1,33 @@
+Compte rendu TME4
+
+
+# Exercice 1
+
+1. valide
+   insatisfiable
+   satisfiable
+
+2. LoTREC essaie de créer un modèle qui respecte toutes les contraintes de la formule. Par exemple, l'opérateur ∨ duplique le modèle de Kripke en deux modèles, l'un où l'opérande gauche est vraie et l'autre ou l'opérande droite est vraie. L'opérateur ◇ cause la création d'un nouveau monde vers lequel pointe le monde actuel, où l'opérande est vraie. En particulier, il y a ici des règles pour créer automatiquement les arcs réflexifs, symmétriques et transitifs de la logique S5. Lorsqu'il existe un monde avec deux formules atomiques contradictoires, son modèle correspondant est une feuille fermée. La formule est satisfiable si au moins une feuille est ouverte.
+
+
+# Exercice 2
+
+...
+
+
+# Exercice 3
+
+3. B ne pas peut savoir si elle a le papillon sur la tête dans les mondes où A ou B a le papillon sur la tête. Elle peut cependant savoir si elle a le papillon sur la tête dans le monde où c'est C qui l'a.
+
+4. Il est vrai que A sait que C ne sait pas si elle a un papillon sur la tête, autrement dit K_A (K_C P_C ∨ K_C ¬ P_C).
+
+5. Il est vrai que quand B sait si elle a un papillon sur la tête, alors A sait que B le sait, autrement dit (K_B P_B ∨ K_B ¬ P_B) → K_A (K_B P_B ∨ K_B ¬ P_B).
+
+
+# Exercice 4
+
+On crée les relations suivantes :
+
+(a) Pour l'agent 3 : w1-w3, w2-w4
+(b) Pour l'agent 1 : w1-w2, w3-w4
+(c) Pour l'agent 2 : w1-w2
