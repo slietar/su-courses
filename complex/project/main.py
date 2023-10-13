@@ -1,5 +1,5 @@
 from calendar import c
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from math import cos, pi, sin
 from pathlib import Path
 import pickle
@@ -12,8 +12,8 @@ import numpy as np
 
 @dataclass
 class Graph:
-  edges: set[tuple[int, int]]
-  vertices: set[int]
+  edges: set[tuple[int, int]] = field(default_factory=set)
+  vertices: set[int] = field(default_factory=set)
 
   def __post_init__(self):
     self.edges = {tuple(sorted(edge)) for edge in self.edges} # type: ignore
@@ -104,68 +104,35 @@ def cover_greedy(input_graph: Graph):
 
   return vertices
 
+def cover_optimal(input_graph: Graph):
+  stack = [(input_graph, set[int]())]
+  done = list[set[int]]()
 
-p_values = [0, 0.25, 0.5, 0.75, 1]
-n_values = np.linspace(10, 500, 10, dtype=int)
+  while stack:
+    graph, included_edges = stack.pop()
 
-if True:
-  # (coupling, greedy), n, p
-  output = np.zeros((2, len(n_values), len(p_values)))
+    if graph.edges:
+      vertex1, vertex2 = next(iter(graph.edges))
+      print(f"{included_edges!r} -> {vertex1}, {vertex2}")
 
-  for p_index, p in enumerate(p_values):
-    for n_index, n in enumerate(n_values):
-      graph = Graph.random(n, p)
+      a = graph.copy()
+      a.remove_vertex(vertex1)
 
-      t0 = time_ns()
-      cover_from_coupling(graph)
-      t1 = time_ns()
-      cover_greedy(graph)
-      t2 = time_ns()
+      b = graph.copy()
+      b.remove_vertex(vertex2)
 
-      output[0, n_index, p_index] = (t1 - t0) * 1e-6
-      output[1, n_index, p_index] = (t2 - t1) * 1e-6
+      # print("  ", a.vertices, b.vertices)
+      print("  ", included_edges | {vertex1}, included_edges | {vertex2})
 
-    # if t1 - t0 > 1_000_000_0:
-    #   break
+      stack.append((a, included_edges | {vertex1}))
+      stack.append((b, included_edges | {vertex2}))
+    else:
+      done.append(included_edges)
 
-  print(output)
-
-
-  with Path("out.pickle").open("wb") as file:
-    pickle.dump(output, file)
-else:
-  with Path("out.pickle").open("rb") as file:
-    output = pickle.load(file)
+  return done
 
 
-fig, ax = plt.subplots()
-
-p_normalize = colors.Normalize(vmin=min(p_values), vmax=max(p_values))
-
-for p_index, p in enumerate(p_values):
-  ax.plot(n_values, output[0, :, p_index], color=cm.autumn(p_normalize(p)), label=f"Coupling (p={p})")
-
-for p_index, p in enumerate(p_values):
-  ax.plot(n_values, output[1, :, p_index], color=cm.winter(p_normalize(p)), label=f"Greedy (p={p})")
-# ax.plot(n_values, output[0, :, 0], label="Coupling")
-# ax.plot(n_values, output[1, :, 0], label="Greedy")
-ax.set_yscale('log')
-ax.set_xlabel("Nombre de sommets (n)")
-ax.set_ylabel("Temps d'exécution (ms)")
-ax.legend()
-
-fig.savefig("out.png")
-
-
-
-# g = Graph(
-#   edges={(1, 2), (2, 3)},
-#   vertices={1, 2, 3}
-# )
-
-# g.remove_vertex(2)
-
-# graph = Graph.random(6)
+graph = Graph.random(5, 0.3)
 # pickle.dump(graph, open("graph.pickle", "wb"))
 # graph: Graph = pickle.load(open("graph.pickle", "rb"))
 
@@ -174,6 +141,7 @@ fig.savefig("out.png")
 
 # print(cover_from_coupling(graph))
 # print(cover_greedy(graph))
+print(cover_optimal(graph))
 
 # print(graph)
 
@@ -182,5 +150,57 @@ fig.savefig("out.png")
 # print(g.degrees())
 # print(graph.draw())
 
-# with (Path(__file__).parent / "out.svg").open("wt") as file:
-#   file.write(graph.draw())
+with (Path(__file__).parent / "out.svg").open("wt") as file:
+  file.write(graph.draw())
+
+
+# p_values = [0, 0.25, 0.5, 0.75, 1]
+# n_values = np.linspace(10, 500, 10, dtype=int)
+
+# if True:
+#   # (coupling, greedy), n, p
+#   output = np.zeros((2, len(n_values), len(p_values)))
+
+#   for p_index, p in enumerate(p_values):
+#     for n_index, n in enumerate(n_values):
+#       graph = Graph.random(n, p)
+
+#       t0 = time_ns()
+#       cover_from_coupling(graph)
+#       t1 = time_ns()
+#       cover_greedy(graph)
+#       t2 = time_ns()
+
+#       output[0, n_index, p_index] = (t1 - t0) * 1e-6
+#       output[1, n_index, p_index] = (t2 - t1) * 1e-6
+
+#     # if t1 - t0 > 1_000_000_0:
+#     #   break
+
+#   print(output)
+
+
+#   with Path("out.pickle").open("wb") as file:
+#     pickle.dump(output, file)
+# else:
+#   with Path("out.pickle").open("rb") as file:
+#     output = pickle.load(file)
+
+
+# fig, ax = plt.subplots()
+
+# p_normalize = colors.Normalize(vmin=min(p_values), vmax=max(p_values))
+
+# for p_index, p in enumerate(p_values):
+#   ax.plot(n_values, output[0, :, p_index], color=cm.autumn(p_normalize(p)), label=f"Coupling (p={p})")
+
+# for p_index, p in enumerate(p_values):
+#   ax.plot(n_values, output[1, :, p_index], color=cm.winter(p_normalize(p)), label=f"Greedy (p={p})")
+# # ax.plot(n_values, output[0, :, 0], label="Coupling")
+# # ax.plot(n_values, output[1, :, 0], label="Greedy")
+# ax.set_yscale('log')
+# ax.set_xlabel("Nombre de sommets (n)")
+# ax.set_ylabel("Temps d'exécution (ms)")
+# ax.legend()
+
+# fig.savefig("out.png")
