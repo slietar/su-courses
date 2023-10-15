@@ -1,13 +1,13 @@
-from calendar import c
-from dataclasses import dataclass, field
-from math import cos, pi, sin
-from pathlib import Path
+import math
 import pickle
+from dataclasses import dataclass, field
+from pathlib import Path
 from random import random
 from time import time_ns
-from matplotlib import cm, colors, pyplot as plt
 
 import numpy as np
+from matplotlib import cm, colors
+from matplotlib import pyplot as plt
 
 
 @dataclass
@@ -46,8 +46,8 @@ class Graph:
     edge_pos = dict[int, tuple[float, float]]()
 
     for index, vertex in enumerate(self.vertices):
-      c = cos(index * 2 * pi / len(self.vertices))
-      s = sin(index * 2 * pi / len(self.vertices))
+      c = math.cos(index * 2 * math.pi / len(self.vertices))
+      s = math.sin(index * 2 * math.pi / len(self.vertices))
 
       x = 50 + 40 * c
       y = 50 + 40 * s
@@ -113,7 +113,7 @@ def cover_optimal(input_graph: Graph):
 
     if graph.edges:
       vertex1, vertex2 = next(iter(graph.edges))
-      print(f"{included_edges!r} -> {vertex1}, {vertex2}")
+      # print(f"{included_edges!r} -> {vertex1}, {vertex2}")
 
       a = graph.copy()
       a.remove_vertex(vertex1)
@@ -122,7 +122,7 @@ def cover_optimal(input_graph: Graph):
       b.remove_vertex(vertex2)
 
       # print("  ", a.vertices, b.vertices)
-      print("  ", included_edges | {vertex1}, included_edges | {vertex2})
+      # print("  ", included_edges | {vertex1}, included_edges | {vertex2})
 
       stack.append((a, included_edges | {vertex1}))
       stack.append((b, included_edges | {vertex2}))
@@ -132,75 +132,65 @@ def cover_optimal(input_graph: Graph):
   return done
 
 
-graph = Graph.random(5, 0.3)
-# pickle.dump(graph, open("graph.pickle", "wb"))
-# graph: Graph = pickle.load(open("graph.pickle", "rb"))
+# Testing
 
-# graph.remove_vertex(1)
-# graph = Graph.random(6, 0.5)
+if True:
+  graph = Graph.random(5, 0.3)
+  # pickle.dump(graph, open("graph.pickle", "wb"))
+  # graph: Graph = pickle.load(open("graph.pickle", "rb"))
 
-# print(cover_from_coupling(graph))
-# print(cover_greedy(graph))
-print(cover_optimal(graph))
+  # print(cover_from_coupling(graph))
+  # print(cover_greedy(graph))
+  print(cover_optimal(graph))
 
-# print(graph)
-
-# print(g)
-
-# print(g.degrees())
-# print(graph.draw())
-
-with (Path(__file__).parent / "out.svg").open("wt") as file:
-  file.write(graph.draw())
+  with (Path(__file__).parent / "out.svg").open("wt") as file:
+    file.write(graph.draw())
 
 
-# p_values = [0, 0.25, 0.5, 0.75, 1]
-# n_values = np.linspace(10, 500, 10, dtype=int)
+# Benchmark
 
-# if True:
-#   # (coupling, greedy), n, p
-#   output = np.zeros((2, len(n_values), len(p_values)))
+if False:
+  p_values = [0, 0.25, 0.5, 0.75, 1]
+  n_values = np.linspace(10, 500, 10, dtype=int)
 
-#   for p_index, p in enumerate(p_values):
-#     for n_index, n in enumerate(n_values):
-#       graph = Graph.random(n, p)
+  if True:
+    # (coupling, greedy), n, p
+    output = np.zeros((2, len(n_values), len(p_values)))
 
-#       t0 = time_ns()
-#       cover_from_coupling(graph)
-#       t1 = time_ns()
-#       cover_greedy(graph)
-#       t2 = time_ns()
+    for p_index, p in enumerate(p_values):
+      for n_index, n in enumerate(n_values):
+        graph = Graph.random(n, p)
 
-#       output[0, n_index, p_index] = (t1 - t0) * 1e-6
-#       output[1, n_index, p_index] = (t2 - t1) * 1e-6
+        t0 = time_ns()
+        cover_from_coupling(graph)
+        t1 = time_ns()
+        cover_greedy(graph)
+        t2 = time_ns()
 
-#     # if t1 - t0 > 1_000_000_0:
-#     #   break
-
-#   print(output)
+        output[0, n_index, p_index] = (t1 - t0) * 1e-6
+        output[1, n_index, p_index] = (t2 - t1) * 1e-6
 
 
-#   with Path("out.pickle").open("wb") as file:
-#     pickle.dump(output, file)
-# else:
-#   with Path("out.pickle").open("rb") as file:
-#     output = pickle.load(file)
+    with Path("out.pickle").open("wb") as file:
+      pickle.dump(output, file)
+  else:
+    with Path("out.pickle").open("rb") as file:
+      output = pickle.load(file)
 
 
-# fig, ax = plt.subplots()
+  fig, ax = plt.subplots()
 
-# p_normalize = colors.Normalize(vmin=min(p_values), vmax=max(p_values))
+  p_normalize = colors.Normalize(vmin=min(p_values), vmax=max(p_values))
 
-# for p_index, p in enumerate(p_values):
-#   ax.plot(n_values, output[0, :, p_index], color=cm.autumn(p_normalize(p)), label=f"Coupling (p={p})")
+  for p_index, p in enumerate(p_values):
+    ax.plot(n_values, output[0, :, p_index], color=cm.autumn(p_normalize(p)), label=f"Coupling (p={p})")
 
-# for p_index, p in enumerate(p_values):
-#   ax.plot(n_values, output[1, :, p_index], color=cm.winter(p_normalize(p)), label=f"Greedy (p={p})")
-# # ax.plot(n_values, output[0, :, 0], label="Coupling")
-# # ax.plot(n_values, output[1, :, 0], label="Greedy")
-# ax.set_yscale('log')
-# ax.set_xlabel("Nombre de sommets (n)")
-# ax.set_ylabel("Temps d'exécution (ms)")
-# ax.legend()
+  for p_index, p in enumerate(p_values):
+    ax.plot(n_values, output[1, :, p_index], color=cm.winter(p_normalize(p)), label=f"Greedy (p={p})")
 
-# fig.savefig("out.png")
+  ax.set_yscale('log')
+  ax.set_xlabel("Nombre de sommets (n)")
+  ax.set_ylabel("Temps d'exécution (ms)")
+  ax.legend()
+
+  fig.savefig("out.png")
