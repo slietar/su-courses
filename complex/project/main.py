@@ -4,6 +4,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from random import random
 from time import time_ns
+from typing import Optional
 
 import numpy as np
 from matplotlib import cm, colors
@@ -134,59 +135,92 @@ def cover_optimal(input_graph: Graph):
   return done
 
 
+@dataclass(frozen=True, slots=True)
+class Node:
+  graph: Graph
+  lower_bound: float
+  upper_bound: float
+  vertices: set[int]
+
+  @classmethod
+  def derive(cls, graph: Graph, vertices: set[int]):
+    m = len(graph.edges)
+    n = len(graph.vertices)
+
+    max_degree = max(graph.degrees().values())
+    b2, coupling_cover = cover_from_coupling(graph)
+
+    b1 = math.ceil(len(graph.edges) / max_degree) if max_degree > 0 else 0
+    b3 = 0.5 * (2 * n - 1 - math.sqrt((2 * n - 1) ** 2 - 8 * m))
+
+    lower_bound = len(vertices) + max(b1, b2, b3)
+    upper_bound = len(vertices) + len(coupling_cover)
+
+    return Node(
+      graph,
+      lower_bound,
+      upper_bound,
+      vertices
+    )
+
 def cover_optimal2(input_graph: Graph):
-  stack = [(input_graph, set[int]())]
-  done = list[set[int]]()
+  stack = [Node.derive(input_graph, set())]
+  best_solution: Optional[set[int]] = None
+
+  explored_node_count = 0
 
   while stack:
-    graph, included_vertices = stack.pop()
+    node = stack.pop()
 
-    if graph.edges:
-      m = len(graph.edges)
-      n = len(graph.vertices)
+    # print(node.lower_bound, node.upper_bound)
+    # print(len(best_solution) if best_solution else None, node.lower_bound, node.upper_bound)
 
-      max_degree = max(graph.degrees().values())
-      b2, coupling_cover = cover_from_coupling(graph)
+    if (best_solution is not None) and (node.lower_bound >= len(best_solution)):
+      continue
 
-      b1 = math.ceil(len(graph.edges) / max_degree)
-      b3 = 0.5 * (2 * n - 1 - math.sqrt((2 * n - 1) ** 2 - 8 * m))
+    if node.graph.edges:
+      explored_node_count += 1
+      vertex1, vertex2 = next(iter(node.graph.edges))
 
-      lower_bound = max(b1, b2, b3)
-      upper_bound = len(coupling_cover)
-
-      print(lower_bound, upper_bound, included_vertices, len(included_vertices))
-
-      # if len(included_vertices) >= upper_bound:
-        # continue
-
-      vertex1, vertex2 = next(iter(graph.edges))
-
-      a = graph.copy()
+      a = node.graph.copy()
       a.remove_vertex(vertex1)
 
-      b = graph.copy()
+      b = node.graph.copy()
       b.remove_vertex(vertex2)
 
-      stack.append((a, included_vertices | {vertex1}))
-      stack.append((b, included_vertices | {vertex2}))
-    else:
-      done.append(included_vertices)
+      stack.append(Node.derive(a, node.vertices | {vertex1}))
+      stack.append(Node.derive(b, node.vertices | {vertex2}))
+    elif (best_solution is None) or (len(node.vertices) < len(best_solution)): # Might be redundant
+      best_solution = node.vertices
 
-  return min(done, key=(lambda cover: len(cover)))
+  assert best_solution is not None
+  return explored_node_count, best_solution
 
 # Testing
 
 if 1:
-  graph = Graph.random(8, 0.3)
+  # graph = Graph.random(8, 0.3)
   # pickle.dump(graph, open("graph.pickle", "wb"))
   # graph: Graph = pickle.load(open("graph.pickle", "rb"))
 
   # print(cover_from_coupling(graph))
   # print(cover_greedy(graph))
-  print(cover_optimal2(graph))
+  # print(cover_optimal2(graph))
 
-  with (Path(__file__).parent / "out.svg").open("wt") as file:
-    file.write(graph.draw())
+  # with (Path(__file__).parent / "out.svg").open("wt") as file:
+  #   file.write(graph.draw())
+
+
+  sample_count = 1
+  total_explored_node_count = 0
+
+  for i in range(sample_count):
+    print(f"> {i}")
+    graph = Graph.random(20, 0.3)
+    explored_node_count, _ = cover_optimal2(graph)
+    total_explored_node_count += explored_node_count
+
+  print(total_explored_node_count / sample_count)
 
 
 # Benchmark
