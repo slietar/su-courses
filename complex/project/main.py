@@ -83,13 +83,15 @@ class Graph:
 
 
 def cover_from_coupling(graph: Graph):
+  size = 0
   vertices = set[int]()
 
   for a, b in graph.edges:
     if (not a in vertices) and (not b in vertices):
+      size += 1
       vertices |= {a, b}
 
-  return vertices
+  return size, vertices
 
 def cover_greedy(input_graph: Graph):
   graph = input_graph.copy()
@@ -109,7 +111,7 @@ def cover_optimal(input_graph: Graph):
   done = list[set[int]]()
 
   while stack:
-    graph, included_edges = stack.pop()
+    graph, included_vertices = stack.pop()
 
     if graph.edges:
       vertex1, vertex2 = next(iter(graph.edges))
@@ -124,24 +126,64 @@ def cover_optimal(input_graph: Graph):
       # print("  ", a.vertices, b.vertices)
       # print("  ", included_edges | {vertex1}, included_edges | {vertex2})
 
-      stack.append((a, included_edges | {vertex1}))
-      stack.append((b, included_edges | {vertex2}))
+      stack.append((a, included_vertices | {vertex1}))
+      stack.append((b, included_vertices | {vertex2}))
     else:
-      done.append(included_edges)
+      done.append(included_vertices)
 
   return done
 
 
+def cover_optimal2(input_graph: Graph):
+  stack = [(input_graph, set[int]())]
+  done = list[set[int]]()
+
+  while stack:
+    graph, included_vertices = stack.pop()
+
+    if graph.edges:
+      m = len(graph.edges)
+      n = len(graph.vertices)
+
+      max_degree = max(graph.degrees().values())
+      b2, coupling_cover = cover_from_coupling(graph)
+
+      b1 = math.ceil(len(graph.edges) / max_degree)
+      b3 = 0.5 * (2 * n - 1 - math.sqrt((2 * n - 1) ** 2 - 8 * m))
+
+      lower_bound = max(b1, b2, b3)
+      upper_bound = len(coupling_cover)
+
+      print(lower_bound, upper_bound, included_vertices, len(included_vertices))
+
+      # if len(included_vertices) >= upper_bound:
+        # continue
+
+      vertex1, vertex2 = next(iter(graph.edges))
+
+      a = graph.copy()
+      a.remove_vertex(vertex1)
+
+      b = graph.copy()
+      b.remove_vertex(vertex2)
+
+      stack.append((a, included_vertices | {vertex1}))
+      stack.append((b, included_vertices | {vertex2}))
+    else:
+      done.append(included_vertices)
+
+  return min(done, key=(lambda cover: len(cover)))
+
 # Testing
 
-if True:
-  graph = Graph.random(5, 0.3)
+if 1:
+  graph = Graph.random(8, 0.3)
   # pickle.dump(graph, open("graph.pickle", "wb"))
   # graph: Graph = pickle.load(open("graph.pickle", "rb"))
 
   # print(cover_from_coupling(graph))
   # print(cover_greedy(graph))
-  print(cover_optimal(graph))
+  print(cover_optimal2(graph))
 
   with (Path(__file__).parent / "out.svg").open("wt") as file:
     file.write(graph.draw())
@@ -149,48 +191,76 @@ if True:
 
 # Benchmark
 
-if False:
-  p_values = [0, 0.25, 0.5, 0.75, 1]
+if 0:
+  sample_count = 2
+  p_values = [0.25] # [0, 0.25, 0.5, 0.75, 1]
   n_values = np.linspace(10, 500, 10, dtype=int)
 
-  if True:
-    # (coupling, greedy), n, p
-    output = np.zeros((2, len(n_values), len(p_values)))
+  if False:
+    # (coupling, greedy), sample, n, p
+    cover_size = np.zeros((2, sample_count, len(n_values), len(p_values)), dtype=int)
+    exec_time = np.zeros((2, sample_count, len(n_values), len(p_values)))
 
-    for p_index, p in enumerate(p_values):
-      for n_index, n in enumerate(n_values):
-        graph = Graph.random(n, p)
+    for sample_index in range(sample_count):
+      for p_index, p in enumerate(p_values):
+        for n_index, n in enumerate(n_values):
+          graph = Graph.random(n, p)
 
-        t0 = time_ns()
-        cover_from_coupling(graph)
-        t1 = time_ns()
-        cover_greedy(graph)
-        t2 = time_ns()
+          t0 = time_ns()
+          _, coupling_cover = cover_from_coupling(graph)
+          t1 = time_ns()
+          greedy_cover = cover_greedy(graph)
+          t2 = time_ns()
 
-        output[0, n_index, p_index] = (t1 - t0) * 1e-6
-        output[1, n_index, p_index] = (t2 - t1) * 1e-6
+          index = sample_index, n_index, p_index
+
+          cover_size[0, *index] = len(coupling_cover)
+          cover_size[1, *index] = len(greedy_cover)
+
+          exec_time[0, *index] = (t1 - t0) * 1e-6
+          exec_time[1, *index] = (t2 - t1) * 1e-6
 
 
     with Path("out.pickle").open("wb") as file:
-      pickle.dump(output, file)
+      pickle.dump((cover_size, exec_time), file)
   else:
     with Path("out.pickle").open("rb") as file:
-      output = pickle.load(file)
+      cover_size, exec_time = pickle.load(file)
+
+  # print(cover_size)
+
+  # avg_cover_size = np.average(cover_size, axis=1)
+  avg_exec_time = np.average(exec_time.clip(min=1e-3), axis=1)
 
 
-  fig, ax = plt.subplots()
+  fig1, ax1 = plt.subplots()
+  fig2, ax2 = plt.subplots()
 
   p_normalize = colors.Normalize(vmin=min(p_values), vmax=max(p_values))
 
   for p_index, p in enumerate(p_values):
-    ax.plot(n_values, output[0, :, p_index], color=cm.autumn(p_normalize(p)), label=f"Coupling (p={p})")
+    ax1.plot(n_values, avg_exec_time[0, :, p_index], color=cm.autumn(p_normalize(p)), label=f"Coupling (p={p})")
+    # ax2.scatter(n_values, avg_cover_size[0, :, p_index], color=cm.autumn(p_normalize(p)), label=f"Coupling (p={p})")
 
   for p_index, p in enumerate(p_values):
-    ax.plot(n_values, output[1, :, p_index], color=cm.winter(p_normalize(p)), label=f"Greedy (p={p})")
+    ax1.plot(n_values, avg_exec_time[1, :, p_index], color=cm.winter(p_normalize(p)), label=f"Greedy (p={p})")
+    # ax2.scatter(n_values, avg_cover_size[1, :, p_index], color=cm.winter(p_normalize(p)), label=f"Greedy (p={p})")
 
-  ax.set_yscale('log')
-  ax.set_xlabel("Nombre de sommets (n)")
-  ax.set_ylabel("Temps d'exécution (ms)")
-  ax.legend()
+  ax1.set_yscale('log')
+  ax1.set_xlabel("Nombre de sommets (n)")
+  ax1.set_ylabel("Temps d'exécution (ms)")
+  ax1.legend()
 
-  fig.savefig("out.png")
+  r_cover_size = cover_size.reshape((2, -1))
+  j = range(r_cover_size.shape[1])
+
+  print(r_cover_size)
+  ax2.scatter(j, r_cover_size[0, :])
+  ax2.scatter(j, r_cover_size[1, :])
+
+  # ax2.set_xlabel("Nombre de sommets (n)")
+  # ax2.set_ylabel("Nombre de sommets dans la couverture ($|C|$)")
+  ax2.legend()
+
+  fig1.savefig("out1.png")
+  fig2.savefig("out2.png")
