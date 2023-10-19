@@ -4,7 +4,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from random import random
 from time import time_ns
-from typing import Optional
+from typing import Any, Callable, Optional
 
 import numpy as np
 from matplotlib import cm, colors
@@ -164,18 +164,17 @@ class Node:
     )
 
 def cover_optimal2(input_graph: Graph):
-  stack = [Node.derive(input_graph, set())]
-  best_solution: Optional[set[int]] = None
-
   explored_node_count = 0
+  stack = [Node.derive(input_graph, set())]
+
+  best_solution: Optional[set[int]] = None
+  best_solution_upper_bound = math.inf
 
   while stack:
     node = stack.pop()
+    best_solution_upper_bound = min(best_solution_upper_bound, node.upper_bound)
 
-    # print(node.lower_bound, node.upper_bound)
-    # print(len(best_solution) if best_solution else None, node.lower_bound, node.upper_bound)
-
-    if (best_solution is not None) and (node.lower_bound >= len(best_solution)):
+    if node.lower_bound > best_solution_upper_bound:
       continue
 
     if node.graph.edges:
@@ -190,28 +189,32 @@ def cover_optimal2(input_graph: Graph):
 
       stack.append(Node.derive(a, node.vertices | {vertex1}))
       stack.append(Node.derive(b, node.vertices | {vertex2}))
-    elif (best_solution is None) or (len(node.vertices) < len(best_solution)): # Might be redundant
+    else:
+      assert node.upper_bound == node.lower_bound == len(node.vertices)
+
       best_solution = node.vertices
+      best_solution_upper_bound = node.lower_bound
 
   assert best_solution is not None
   return explored_node_count, best_solution
 
 # Testing
 
-if 1:
-  # graph = Graph.random(8, 0.3)
+if 0:
+  graph = Graph.random(8, 0.3)
   # pickle.dump(graph, open("graph.pickle", "wb"))
   # graph: Graph = pickle.load(open("graph.pickle", "rb"))
 
   # print(cover_from_coupling(graph))
   # print(cover_greedy(graph))
-  # print(cover_optimal2(graph))
+  print(cover_optimal2(graph))
 
-  # with (Path(__file__).parent / "out.svg").open("wt") as file:
-  #   file.write(graph.draw())
+  with (Path(__file__).parent / "out.svg").open("wt") as file:
+    file.write(graph.draw())
 
 
-  sample_count = 1
+if 0:
+  sample_count = 100
   total_explored_node_count = 0
 
   for i in range(sample_count):
@@ -225,35 +228,44 @@ if 1:
 
 # Benchmark
 
-if 0:
+if 1:
+  @dataclass
+  class Algorithm:
+    function: Callable[[Graph], Any]
+    label: str
+    color: Any
+
+  algorithms = [
+    Algorithm(cover_from_coupling, "Coupling", cm.Greens),
+    Algorithm(cover_greedy, "Greedy", cm.Blues),
+    Algorithm(cover_optimal, "Optimal (4.1)", cm.Reds),
+    Algorithm(cover_optimal2, "Optimal (4.2)", cm.Purples),
+  ]
+
+  algorithm_count = len(algorithms)
   sample_count = 2
   p_values = [0.25] # [0, 0.25, 0.5, 0.75, 1]
-  n_values = np.linspace(10, 500, 10, dtype=int)
+  n_values = np.linspace(10, 20, 5, dtype=int)
 
-  if False:
+  if 1:
     # (coupling, greedy), sample, n, p
-    cover_size = np.zeros((2, sample_count, len(n_values), len(p_values)), dtype=int)
-    exec_time = np.zeros((2, sample_count, len(n_values), len(p_values)))
+    cover_size = np.zeros((algorithm_count, sample_count, len(n_values), len(p_values)), dtype=int)
+    exec_time = np.zeros((algorithm_count, sample_count, len(n_values), len(p_values)))
 
     for sample_index in range(sample_count):
       for p_index, p in enumerate(p_values):
         for n_index, n in enumerate(n_values):
           graph = Graph.random(n, p)
 
-          t0 = time_ns()
-          _, coupling_cover = cover_from_coupling(graph)
-          t1 = time_ns()
-          greedy_cover = cover_greedy(graph)
-          t2 = time_ns()
+          for algorithm_index, algorithm in enumerate(algorithms):
+            t0 = time_ns()
+            algorithm.function(graph)
+            t1 = time_ns()
 
-          index = sample_index, n_index, p_index
+            index = algorithm_index, sample_index, n_index, p_index
 
-          cover_size[0, *index] = len(coupling_cover)
-          cover_size[1, *index] = len(greedy_cover)
-
-          exec_time[0, *index] = (t1 - t0) * 1e-6
-          exec_time[1, *index] = (t2 - t1) * 1e-6
-
+            # cover_size[*index] = ...
+            exec_time[*index] = (t1 - t0) * 1e-6
 
     with Path("out.pickle").open("wb") as file:
       pickle.dump((cover_size, exec_time), file)
@@ -272,13 +284,10 @@ if 0:
 
   p_normalize = colors.Normalize(vmin=min(p_values), vmax=max(p_values))
 
-  for p_index, p in enumerate(p_values):
-    ax1.plot(n_values, avg_exec_time[0, :, p_index], color=cm.autumn(p_normalize(p)), label=f"Coupling (p={p})")
-    # ax2.scatter(n_values, avg_cover_size[0, :, p_index], color=cm.autumn(p_normalize(p)), label=f"Coupling (p={p})")
-
-  for p_index, p in enumerate(p_values):
-    ax1.plot(n_values, avg_exec_time[1, :, p_index], color=cm.winter(p_normalize(p)), label=f"Greedy (p={p})")
-    # ax2.scatter(n_values, avg_cover_size[1, :, p_index], color=cm.winter(p_normalize(p)), label=f"Greedy (p={p})")
+  for algorithm_index, algorithm in enumerate(algorithms):
+    for p_index, p in enumerate(p_values):
+      ax1.plot(n_values, avg_exec_time[algorithm_index, :, p_index], color=algorithm.color(p_normalize(p) * 0.8 + 0.2), label=f"{algorithm.label} (p={p})")
+      # ax2.scatter(n_values, avg_cover_size[0, :, p_index], color=cm.autumn(p_normalize(p)), label=f"Coupling (p={p})")
 
   ax1.set_yscale('log')
   ax1.set_xlabel("Nombre de sommets (n)")
@@ -296,5 +305,5 @@ if 0:
   # ax2.set_ylabel("Nombre de sommets dans la couverture ($|C|$)")
   ax2.legend()
 
-  fig1.savefig("out1.png")
-  fig2.savefig("out2.png")
+  fig1.savefig("out1.png", dpi=200)
+  fig2.savefig("out2.png", dpi=200)
