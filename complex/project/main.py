@@ -84,6 +84,13 @@ class Graph:
 
 
 def cover_from_coupling(graph: Graph):
+  """
+  Create a suboptimal cover from a coupling.
+
+  Returns
+    A tuple containing the size of the cover and the vertices in the cover.
+  """
+
   size = 0
   vertices = set[int]()
 
@@ -95,6 +102,13 @@ def cover_from_coupling(graph: Graph):
   return size, vertices
 
 def cover_greedy(input_graph: Graph):
+  """
+  Create a suboptimal cover using a greedy algorithm.
+
+  Returns
+    A set with the vertices in the cover.
+  """
+
   graph = input_graph.copy()
   vertices = set[int]()
 
@@ -107,16 +121,22 @@ def cover_greedy(input_graph: Graph):
 
   return vertices
 
-def cover_optimal(input_graph: Graph):
+def cover_optimal1(input_graph: Graph):
+  """
+  Create an optimal cover using a branch and bound algorithm, without pruning.
+
+  Returns
+    A set with the vertices in the cover.
+  """
+
   stack = [(input_graph, set[int]())]
-  done = list[set[int]]()
+  covers = list[set[int]]()
 
   while stack:
     graph, included_vertices = stack.pop()
 
     if graph.edges:
       vertex1, vertex2 = next(iter(graph.edges))
-      # print(f"{included_edges!r} -> {vertex1}, {vertex2}")
 
       a = graph.copy()
       a.remove_vertex(vertex1)
@@ -124,19 +144,20 @@ def cover_optimal(input_graph: Graph):
       b = graph.copy()
       b.remove_vertex(vertex2)
 
-      # print("  ", a.vertices, b.vertices)
-      # print("  ", included_edges | {vertex1}, included_edges | {vertex2})
-
       stack.append((a, included_vertices | {vertex1}))
       stack.append((b, included_vertices | {vertex2}))
     else:
-      done.append(included_vertices)
+      covers.append(included_vertices)
 
-  return done
+  return min(covers, key=(lambda cover: len(cover)))
 
 
-@dataclass(frozen=True, slots=True)
-class Node:
+@dataclass(slots=True)
+class Node2:
+  """
+  Utility class to manage nodes in the branch and bound cover algorithm.
+  """
+
   graph: Graph
   lower_bound: float
   upper_bound: float
@@ -156,7 +177,7 @@ class Node:
     lower_bound = len(vertices) + max(b1, b2, b3)
     upper_bound = len(vertices) + len(coupling_cover)
 
-    return Node(
+    return cls(
       graph,
       lower_bound,
       upper_bound,
@@ -164,8 +185,15 @@ class Node:
     )
 
 def cover_optimal2(input_graph: Graph):
+  """
+  Create an optimal cover using a branch and bound algorithm, with pruning.
+
+  Returns
+    A tuple containing the number of explored nodes and a set with the vertices in the cover.
+  """
+
   explored_node_count = 0
-  stack = [Node.derive(input_graph, set())]
+  stack = [Node2.derive(input_graph, set())]
 
   best_solution: Optional[set[int]] = None
   best_solution_upper_bound = math.inf
@@ -187,8 +215,119 @@ def cover_optimal2(input_graph: Graph):
       b = node.graph.copy()
       b.remove_vertex(vertex2)
 
-      stack.append(Node.derive(a, node.vertices | {vertex1}))
-      stack.append(Node.derive(b, node.vertices | {vertex2}))
+      stack.append(Node2.derive(a, node.vertices | {vertex1}))
+      stack.append(Node2.derive(b, node.vertices | {vertex2}))
+    else:
+      assert node.upper_bound == node.lower_bound == len(node.vertices)
+
+      best_solution = node.vertices
+      best_solution_upper_bound = node.lower_bound
+
+  assert best_solution is not None
+  return explored_node_count, best_solution
+
+
+@dataclass(slots=True)
+class Node3(Node2):
+  excluded_vertices: set[int] = field(default_factory=set)
+
+def cover_optimal3(input_graph: Graph):
+  """
+  Create an optimal cover using a branch and bound algorithm, with pruning and branching that avoids redundant solutions.
+
+  Returns
+    A tuple containing the number of explored nodes and a set with the vertices in the cover.
+  """
+
+  explored_node_count = 0
+  stack = [Node3.derive(input_graph, set())]
+
+  best_solution: Optional[set[int]] = None
+  best_solution_upper_bound = math.inf
+
+  while stack:
+    node = stack.pop()
+    best_solution_upper_bound = min(best_solution_upper_bound, node.upper_bound)
+
+    if node.lower_bound > best_solution_upper_bound:
+      continue
+
+    if node.graph.edges:
+      explored_node_count += 1
+      vertex1, vertex2 = next(iter(node.graph.edges))
+
+      if not (vertex1 in node.excluded_vertices):
+        graph1 = node.graph.copy()
+        graph1.remove_vertex(vertex1)
+
+        node1 = Node3.derive(graph1, node.vertices | {vertex1})
+        stack.append(node1)
+
+      if not (vertex2 in node.excluded_vertices):
+        graph2 = node.graph.copy()
+        graph2.remove_vertex(vertex2)
+
+        node2 = Node3.derive(graph2, node.vertices | {vertex2})
+        node2.excluded_vertices.add(vertex1)
+
+        stack.append(node2)
+    else:
+      assert node.upper_bound == node.lower_bound == len(node.vertices)
+
+      best_solution = node.vertices
+      best_solution_upper_bound = node.lower_bound
+
+  assert best_solution is not None
+  return explored_node_count, best_solution
+
+
+def cover_optimal4(input_graph: Graph):
+  """
+  Create an optimal cover using a branch and bound algorithm, with pruning, branching that avoids redundant solutions and optimized edge selection.
+
+  Returns
+    A tuple containing the number of explored nodes and a set with the vertices in the cover.
+  """
+
+  explored_node_count = 0
+  stack = [Node3.derive(input_graph, set())]
+
+  best_solution: Optional[set[int]] = None
+  best_solution_upper_bound = math.inf
+
+  while stack:
+    node = stack.pop()
+    best_solution_upper_bound = min(best_solution_upper_bound, node.upper_bound)
+
+    if node.lower_bound > best_solution_upper_bound:
+      continue
+
+    if node.graph.edges:
+      explored_node_count += 1
+
+      graph_degrees = node.graph.degrees()
+      vertex1, vertex2 = max(node.graph.edges, key=(lambda edge: max(graph_degrees[edge[0]], graph_degrees[edge[1]])))
+      # print(graph_degrees)
+      # print("  ", vertex1, vertex2)
+
+      if graph_degrees[vertex2] > graph_degrees[vertex1]:
+        vertex1, vertex2 = vertex2, vertex1
+
+      if not (vertex1 in node.excluded_vertices):
+        graph1 = node.graph.copy()
+        graph1.remove_vertex(vertex1)
+
+        node1 = Node3.derive(graph1, node.vertices | {vertex1})
+        stack.append(node1)
+
+      if not (vertex2 in node.excluded_vertices):
+        graph2 = node.graph.copy()
+        graph2.remove_vertex(vertex2)
+
+        node2 = Node3.derive(graph2, node.vertices | {vertex2})
+        node2.excluded_vertices.add(vertex1)
+
+        stack.append(node2)
     else:
       assert node.upper_bound == node.lower_bound == len(node.vertices)
 
@@ -200,17 +339,25 @@ def cover_optimal2(input_graph: Graph):
 
 # Testing
 
-if 0:
-  graph = Graph.random(8, 0.3)
+if 1:
+  graph = Graph.random(12, 0.3)
   # pickle.dump(graph, open("graph.pickle", "wb"))
   # graph: Graph = pickle.load(open("graph.pickle", "rb"))
 
   # print(cover_from_coupling(graph))
   # print(cover_greedy(graph))
   print(cover_optimal2(graph))
+  print(cover_optimal3(graph))
+  print(cover_optimal4(graph))
 
   with (Path(__file__).parent / "out.svg").open("wt") as file:
     file.write(graph.draw())
+
+
+if 0:
+  for _ in range(100):
+    graph = Graph.random(10, 0.3)
+    assert cover_optimal2(graph)[1] == cover_optimal4(graph)[1]
 
 
 if 0:
@@ -228,7 +375,7 @@ if 0:
 
 # Benchmark
 
-if 1:
+if 0:
   @dataclass
   class Algorithm:
     function: Callable[[Graph], Any]
@@ -238,7 +385,7 @@ if 1:
   algorithms = [
     Algorithm(cover_from_coupling, "Coupling", cm.Greens),
     Algorithm(cover_greedy, "Greedy", cm.Blues),
-    Algorithm(cover_optimal, "Optimal (4.1)", cm.Reds),
+    Algorithm(cover_optimal1, "Optimal (4.1)", cm.Reds),
     Algorithm(cover_optimal2, "Optimal (4.2)", cm.Purples),
   ]
 
