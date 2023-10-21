@@ -48,9 +48,10 @@ def cover_optimal1(input_graph: Graph):
   List all optimal covers of a graph using a branch and bound algorithm, without pruning.
 
   Returns
-    A set of a set of vertices in each cover.
+    A tuple containing the number of explored nodes and a set of a set of vertices in each cover.
   """
 
+  explored_node_count = 0
   stack = [(input_graph, set[int]())]
   covers = set[frozenset[int]]()
 
@@ -58,6 +59,7 @@ def cover_optimal1(input_graph: Graph):
     graph, included_vertices = stack.pop()
 
     if graph.edges:
+      explored_node_count += 1
       vertex1, vertex2 = next(iter(graph.edges))
 
       graph1 = graph.copy()
@@ -72,7 +74,7 @@ def cover_optimal1(input_graph: Graph):
       covers.add(frozenset(included_vertices))
 
   min_cover_size = min(len(cover) for cover in covers)
-  return {cover for cover in covers if len(cover) == min_cover_size}
+  return explored_node_count, {cover for cover in covers if len(cover) == min_cover_size}
 
 
 @dataclass(slots=True)
