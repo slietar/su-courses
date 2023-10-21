@@ -1,3 +1,4 @@
+import math
 import pickle
 from dataclasses import dataclass
 from pathlib import Path
@@ -27,7 +28,7 @@ def benchmark(algorithms: list[Algorithm], sample_count: int, n_values: Collecti
   for sample_index in range(sample_count):
     for p_index, p in enumerate(p_values):
       for n_index, n in enumerate(n_values):
-        graph = Graph.random(n, p)
+        graph = Graph.random(n, (1.0 / math.sqrt(n) if n > 0 else 0) if p < 0 else p)
 
         for algorithm_index, algorithm in enumerate(algorithms):
           index = algorithm_index, sample_index, n_index, p_index
@@ -65,7 +66,7 @@ if __name__ == '__main__':
 
   def create_normalize(values: Collection[float], /):
     norm = colors.Normalize(vmin=min(values), vmax=max(values))
-    return lambda x: norm(x) * 0.6 + 0.2
+    return lambda x: norm(x) * 0.5 + 0.3
 
 
   # Question 3 2
@@ -125,132 +126,70 @@ if __name__ == '__main__':
 
 
   def optimal_benchmark():
-    n_values = np.linspace(0, 10, 5, dtype=int)
-    p_values = [0.1, 0.2, 0.3]
+    n_values = np.linspace(0, 20, 10, dtype=int)
+    p_values = [0.1, 0.2, 0.3, -1.0]
+    p_labels = ['0.1', '0.2', '0.3', r'$\frac{1}{\sqrt{n}}$']
 
     benchmark_algorithms = [
       Algorithm(lambda graph: ((result := algorithms.cover_optimal1(graph))[0], next(iter(result[1]))), 'Sans élagage', cm.Reds),
       Algorithm(lambda graph: algorithms.cover_optimal2(graph), 'Avec élagage', cm.Blues),
-      Algorithm(lambda graph: algorithms.cover_optimal3(graph), 'Avec élagage et branchement amélioré', cm.Greens),
-      Algorithm(lambda graph: algorithms.cover_optimal4(graph), 'Avec élagage et branchement amélioré 2', cm.Purples)
+      Algorithm(lambda graph: algorithms.cover_optimal3(graph), 'Avec branchement amélioré 1', cm.Greens),
+      Algorithm(lambda graph: algorithms.cover_optimal4(graph), 'Avec branchement amélioré 2', cm.Purples)
     ]
 
-    cover_size, exec_time, explored_node_count = benchmark(benchmark_algorithms, sample_count=20, n_values=n_values, p_values=p_values)
+    cover_size, exec_time, explored_node_count = benchmark(benchmark_algorithms, sample_count=2, n_values=n_values, p_values=p_values)
 
-    avg_exec_time = np.average(exec_time, axis=1)
-    normalize_p = create_normalize(p_values)
+    normalize_p = create_normalize(p_values[:-1])
 
 
-    def plot1():
-      fig, ax = plt.subplots()
+    def plot_exec_time(algorithm_indices: Sequence[int], p_indices: Sequence[int], name: str):
+      def plot1():
+        fig, ax = plt.subplots()
 
-      for p_index, p in enumerate(p_values):
-        ax.plot(n_values, avg_exec_time[0, :, p_index], color=benchmark_algorithms[0].color(normalize_p(p)), label=f"p = {p}")
+        for algorithm_index in algorithm_indices:
+          algorithm = benchmark_algorithms[algorithm_index]
 
-      ax.set_yscale('log')
-      ax.set_xlabel('Nombre de sommets n')
-      ax.set_ylabel('''Temps d'exécution (ms)''')
-      ax.xaxis.get_major_locator().set_params(integer=True)
-      ax.grid()
-      ax.set_title('''Temps d'éxécution de l'algorithme de branch and bound''')
-      ax.legend()
+          for p_index in p_indices:
+            p = p_values[p_index]
+            ax.plot(n_values, exec_time[algorithm_index, :, :, p_index].mean(axis=0), color=algorithm.color(normalize_p(max(p_values) if p < 0 else p)), label=f"{algorithm.label} (p = {p_labels[p_index]})", linestyle=('dashed' if p < 0 else 'solid'))
 
-      fig.savefig(str(output_dir_path / '4-1_2a.png'))
+        ax.set_yscale('log')
+        ax.set_xlabel('Nombre de sommets n')
+        ax.set_ylabel('''Temps d'exécution (ms)''')
+        ax.xaxis.get_major_locator().set_params(integer=True)
+        ax.grid()
+        ax.set_title('''Temps d'éxécution des algorithmes de branch and bound''')
+        ax.legend()
 
-    def plot2():
-      fig, ax = plt.subplots()
+        fig.savefig(str(output_dir_path / f'{name}a.png'))
 
-      for p_index, p in enumerate(p_values):
-        ax.plot(n_values, explored_node_count[0, :, :, p_index].mean(axis=0), color=benchmark_algorithms[0].color(normalize_p(p)), label=f"p = {p}")
+      def plot2():
+        fig, ax = plt.subplots()
 
-      ax.set_yscale('log')
-      ax.set_xlabel('Nombre de sommets n')
-      ax.set_ylabel('Nombre de nœuds explorés')
-      ax.xaxis.get_major_locator().set_params(integer=True)
-      ax.grid()
-      ax.set_title('''Nombre de nœuds explorés par l'algorithme de branch and bound''')
-      ax.legend()
+        for algorithm_index in algorithm_indices:
+          algorithm = benchmark_algorithms[algorithm_index]
 
-      fig.savefig(str(output_dir_path / '4-1_2b.png'))
+          for p_index in p_indices:
+            p = p_values[p_index]
+            ax.plot(n_values, explored_node_count[algorithm_index, :, :, p_index].mean(axis=0), color=algorithm.color(normalize_p(max(p_values) if p < 0 else p)), label=f"{algorithm.label} (p = {p_labels[p_index]})", linestyle=('dashed' if p < 0 else 'solid'))
 
-    def plot3():
-      fig, ax = plt.subplots()
+        ax.set_yscale('log')
+        ax.set_xlabel('Nombre de sommets n')
+        ax.set_ylabel('Nombre de nœuds explorés')
+        ax.xaxis.get_major_locator().set_params(integer=True)
+        ax.grid()
+        ax.set_title('''Nombre de nœuds explorés par l'algorithme de branch and bound''')
+        ax.legend()
 
-      for algorithm_index, algorithm in enumerate(benchmark_algorithms[0:2]):
-        for p_index, p in enumerate(p_values):
-          ax.plot(n_values, avg_exec_time[algorithm_index, :, p_index], color=algorithm.color(normalize_p(p)), label=f"{algorithm.label} (p = {p})")
+        fig.savefig(str(output_dir_path / f'{name}b.png'))
 
-      ax.set_yscale('log')
-      ax.set_xlabel('Nombre de sommets n')
-      ax.set_ylabel('''Temps d'exécution (ms)''')
-      ax.xaxis.get_major_locator().set_params(integer=True)
-      ax.grid()
-      ax.set_title('''Temps d'éxécution des algorithmes de branch and bound''')
-      ax.legend()
+      plot1()
+      plot2()
 
-      fig.savefig(str(output_dir_path / '4-2_3a.png'))
+    plot_exec_time([0], [0, 1, 2, 3], name='4-1')
+    plot_exec_time([0, 1], [0, 2], name='4-2')
+    plot_exec_time([1, 2, 3], [0, 2], name='4-3')
 
-    def plot4():
-      fig, ax = plt.subplots()
-
-      for algorithm_index, algorithm in enumerate(benchmark_algorithms[0:2]):
-        for p_index, p in enumerate(p_values):
-          ax.plot(n_values, explored_node_count[algorithm_index, :, :, p_index].mean(axis=0), color=algorithm.color(normalize_p(p)), label=f"{algorithm.label} (p = {p})")
-
-      ax.set_yscale('log')
-      ax.set_xlabel('Nombre de sommets n')
-      ax.set_ylabel('Nombre de nœuds explorés')
-      ax.xaxis.get_major_locator().set_params(integer=True)
-      ax.grid()
-      ax.set_title('''Nombre de nœuds explorés par l'algorithme de branch and bound''')
-      ax.legend()
-
-      fig.savefig(str(output_dir_path / '4-2_3b.png'))
-
-    def plot5():
-      fig, ax = plt.subplots()
-
-      for algorithm_index, algorithm in enumerate(benchmark_algorithms):
-        p_index = 1
-        p = p_values[p_index]
-
-        ax.plot(n_values, avg_exec_time[algorithm_index, :, p_index], color=algorithm.color(normalize_p(p)), label=f"{algorithm.label} (p = {p})")
-
-      ax.set_yscale('log')
-      ax.set_xlabel('Nombre de sommets n')
-      ax.set_ylabel('''Temps d'exécution (ms)''')
-      ax.xaxis.get_major_locator().set_params(integer=True)
-      ax.grid()
-      ax.set_title('''Temps d'éxécution des algorithmes de branch and bound''')
-      ax.legend()
-
-      fig.savefig(str(output_dir_path / '4-3_3a.png'))
-
-    def plot6():
-      fig, ax = plt.subplots()
-
-      for algorithm_index, algorithm in enumerate(benchmark_algorithms):
-        p_index = 1
-        p = p_values[p_index]
-
-        ax.plot(n_values, explored_node_count[algorithm_index, :, :, p_index].mean(axis=0), color=algorithm.color(normalize_p(p)), label=f"{algorithm.label} (p = {p})")
-
-      ax.set_yscale('log')
-      ax.set_xlabel('Nombre de sommets n')
-      ax.set_ylabel('Nombre de nœuds explorés')
-      ax.xaxis.get_major_locator().set_params(integer=True)
-      ax.grid()
-      ax.set_title('''Nombre de nœuds explorés par l'algorithme de branch and bound''')
-      ax.legend()
-
-      fig.savefig(str(output_dir_path / '4-3_3b.png'))
-
-    plot1()
-    plot2()
-    plot3()
-    plot4()
-    plot5()
-    plot6()
 
   optimal_benchmark()
   suboptimal_benchmark()
