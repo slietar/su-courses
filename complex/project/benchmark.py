@@ -82,8 +82,9 @@ if __name__ == '__main__':
 
     cover_size, exec_time, _ = benchmark(benchmark_algorithms, sample_count=20, n_values=n_values, p_values=p_values)
 
-    avg_exec_time = np.average(exec_time, axis=1)
-    p_normalize = colors.Normalize(vmin=min(p_values), vmax=max(p_values))
+    avg_cover_size = cover_size.mean(axis=1)
+    avg_exec_time = exec_time.mean(axis=1)
+    normalize_p = create_normalize(p_values[:-1])
 
 
     def plot1():
@@ -91,7 +92,7 @@ if __name__ == '__main__':
 
       for algorithm_index, algorithm in enumerate(benchmark_algorithms):
         for p_index, p in enumerate(p_values):
-          ax.plot(n_values, avg_exec_time[algorithm_index, :, p_index], color=algorithm.color(p_normalize(p) * 0.8 + 0.2), label=f"{algorithm.label} (p={p})")
+          ax.plot(n_values, avg_exec_time[algorithm_index, :, p_index], color=algorithm.color(normalize_p(p)), label=f"{algorithm.label} (p = {p})")
 
       ax.set_yscale('log')
       ax.set_xlabel('Nombre de sommets n')
@@ -107,10 +108,10 @@ if __name__ == '__main__':
       fig, ax = plt.subplots()
 
       with np.errstate(divide='ignore', invalid='ignore'):
-        ratio = np.nanmean(cover_size[0, :, :, :] / cover_size[1, :, :, :], axis=0)
+        ratio = avg_cover_size[0, :, :] / avg_cover_size[1, :, :]
 
       for p_index, p in enumerate(p_values):
-        ax.plot(n_values, ratio[:, p_index], label=f'p = {p}')
+        ax.plot(n_values, ratio[:, p_index], color=cm.Blues(normalize_p(p)), label=f'p = {p}')
 
       ax.set_xlabel('Nombre de sommets n')
       ax.set_ylabel(r'''Rapport d'approximation $\frac{\mathsf{couplage}}{\mathsf{glouton}}$''')
@@ -178,7 +179,7 @@ if __name__ == '__main__':
         ax.set_ylabel('Nombre de nœuds explorés')
         ax.xaxis.get_major_locator().set_params(integer=True)
         ax.grid()
-        ax.set_title('''Nombre de nœuds explorés par l'algorithme de branch and bound''')
+        ax.set_title('''Nombre de nœuds explorés par les algorithmes de branch and bound''')
         ax.legend()
 
         fig.savefig(str(output_dir_path / f'{name}b.png'))
@@ -190,6 +191,42 @@ if __name__ == '__main__':
     plot_exec_time([0, 1], [0, 2], name='4-2')
     plot_exec_time([1, 2, 3], [0, 2], name='4-3')
 
+  def comparison_benchmark():
+    n_values = np.linspace(0, 50, 10, dtype=int)
+    p_values = [0.25, 0.5]
+
+    benchmark_algorithms = [
+      Algorithm(lambda graph: (0, algorithms.cover_from_coupling(graph)[1]), 'Couplage', cm.Greens),
+      Algorithm(lambda graph: (0, algorithms.cover_greedy(graph)), 'Glouton', cm.Reds),
+      Algorithm(lambda graph: algorithms.cover_optimal4(graph), '...', cm.Purples)
+    ]
+
+    cover_size, _, _ = benchmark(benchmark_algorithms, sample_count=20, n_values=n_values, p_values=p_values)
+    normalize_p = create_normalize(p_values)
+
+    fig, ax = plt.subplots()
+
+    avg_cover_size = np.nanmean(cover_size, axis=1)
+
+    with np.errstate(divide='ignore', invalid='ignore'):
+      ratios = avg_cover_size[0:2, :, :] / avg_cover_size[-1, :, :]
+
+    print(np.nanmax(ratios, axis=(1, 2)))
+
+    for algorithm_index, algorithm in enumerate(benchmark_algorithms[0:2]):
+      for p_index, p in enumerate(p_values):
+        ax.plot(n_values, ratios[algorithm_index, :, p_index], color=algorithm.color(normalize_p(p)), label=f'{algorithm.label} (p = {p})')
+
+    ax.set_xlabel('Nombre de sommets n')
+    ax.set_ylabel('''Rapport d'approximation''')
+    ax.set_title('''Rapport d'approximation des algorithmes de couplage et glouton''')
+    ax.xaxis.get_major_locator().set_params(integer=True)
+    ax.grid()
+    ax.legend()
+
+    fig.savefig(str(output_dir_path / '4-4.png'))
+
 
   optimal_benchmark()
   suboptimal_benchmark()
+  comparison_benchmark()
