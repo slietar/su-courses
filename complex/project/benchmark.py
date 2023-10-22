@@ -3,6 +3,7 @@ from matplotlib import cm, colors
 from matplotlib import pyplot as plt
 from pathlib import Path
 from time import time_ns
+from tqdm import tqdm
 from typing import Any, Callable, Collection, Sequence
 import math
 import numpy as np
@@ -23,9 +24,7 @@ def benchmark(algorithms: list[Algorithm], sample_count: int, n_values: Collecti
   cover_size = np.zeros_like(exec_time, dtype=int)
   explored_node_count = np.zeros_like(exec_time, dtype=int)
 
-  for sample_index in range(sample_count):
-    print(sample_index)
-
+  for sample_index in tqdm(range(sample_count)):
     for p_index, p in enumerate(p_values):
       for n_index, n in enumerate(n_values):
         graph = Graph.random(n, (1.0 / math.sqrt(n) if n > 0 else 0) if p < 0 else p)
@@ -80,7 +79,6 @@ if __name__ == '__main__':
 
     cover_size, exec_time, _ = benchmark(benchmark_algorithms, sample_count=20, n_values=n_values, p_values=p_values)
 
-    avg_cover_size = cover_size.mean(axis=1)
     avg_exec_time = exec_time.mean(axis=1)
     normalize_p = create_normalize(p_values[:-1])
 
@@ -106,7 +104,7 @@ if __name__ == '__main__':
       fig, ax = plt.subplots()
 
       with np.errstate(divide='ignore', invalid='ignore'):
-        ratio = avg_cover_size[0, :, :] / avg_cover_size[1, :, :]
+        ratio = np.nanmean(cover_size[0, :, :, :] / cover_size[1, :, :, :], axis=0)
 
       for p_index, p in enumerate(p_values):
         ax.plot(n_values, ratio[:, p_index], color=cm.Blues(normalize_p(p)), label=f'p = {p}')
@@ -133,14 +131,15 @@ if __name__ == '__main__':
       Algorithm(lambda graph: ((result := algorithms.cover_optimal1(graph))[0], next(iter(result[1]))), 'Sans élagage', cm.Reds),
       Algorithm(lambda graph: algorithms.cover_optimal2(graph), 'Avec élagage', cm.Blues),
       Algorithm(lambda graph: algorithms.cover_optimal3(graph), 'Avec branchement amélioré 1', cm.Greens),
-      Algorithm(lambda graph: algorithms.cover_optimal4(graph), 'Avec branchement amélioré 2', cm.Purples)
+      Algorithm(lambda graph: algorithms.cover_optimal4(graph), 'Avec branchement amélioré 2', cm.Purples),
+      Algorithm(lambda graph: algorithms.cover_optimal5(graph), 'Avec branchement amélioré 3', cm.Reds)
     ]
 
-    cover_size, exec_time, explored_node_count = benchmark(benchmark_algorithms, sample_count=20, n_values=n_values, p_values=p_values)
+    _, exec_time, explored_node_count = benchmark(benchmark_algorithms, sample_count=20, n_values=n_values, p_values=p_values)
     normalize_p = create_normalize(p_values[:-1])
 
 
-    def plot_exec_time(algorithm_indices: Sequence[int], p_indices: Sequence[int], name: str):
+    def plot(algorithm_indices: Sequence[int], p_indices: Sequence[int], name: str):
       def plot1():
         fig, ax = plt.subplots()
 
@@ -194,9 +193,10 @@ if __name__ == '__main__':
       plot1()
       plot2()
 
-    plot_exec_time([0], [0, 1, 2, 3], name='4-1')
-    plot_exec_time([0, 1], [0, 2], name='4-2')
-    plot_exec_time([1, 2, 3], [0, 2], name='4-3')
+    plot([0], [0, 1, 2, 3], name='4-1')
+    plot([0, 1], [0, 2], name='4-2')
+    plot([1, 2, 3], [0, 2], name='4-3')
+    plot([3, 4], [0, 2], name='4-3x')
 
   def comparison_benchmark():
     n_values = np.linspace(0, 75, 10, dtype=int)
@@ -213,10 +213,8 @@ if __name__ == '__main__':
 
     fig, ax = plt.subplots()
 
-    avg_cover_size = np.nanmean(cover_size, axis=1)
-
     with np.errstate(divide='ignore', invalid='ignore'):
-      ratios = avg_cover_size[0:2, :, :] / avg_cover_size[-1, :, :]
+      ratios = np.nanmean(cover_size[0:2, :, :, :] / cover_size[-1, :, :, :], axis=1)
 
     print(np.nanmax(ratios, axis=(1, 2)))
 
