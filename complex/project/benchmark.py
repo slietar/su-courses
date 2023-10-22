@@ -26,6 +26,8 @@ def benchmark(algorithms: list[Algorithm], sample_count: int, n_values: Collecti
   explored_node_count = np.zeros_like(exec_time, dtype=int)
 
   for sample_index in range(sample_count):
+    print(sample_index)
+
     for p_index, p in enumerate(p_values):
       for n_index, n in enumerate(n_values):
         graph = Graph.random(n, (1.0 / math.sqrt(n) if n > 0 else 0) if p < 0 else p)
@@ -72,7 +74,7 @@ if __name__ == '__main__':
   # Question 3 2
 
   def suboptimal_benchmark():
-    n_values = np.linspace(0, 20, 10, dtype=int)
+    n_values = np.linspace(0, 150, 10, dtype=int)
     p_values = [0.25, 0.5, 0.75, 1.0]
 
     benchmark_algorithms = [
@@ -102,7 +104,7 @@ if __name__ == '__main__':
       ax.set_title('''Temps d'éxécution des algorithmes de couplage et glouton''')
       ax.legend()
 
-      fig.savefig(str(output_dir_path / '3_2a.png'))
+      fig.savefig(str(output_dir_path / '3-2a.png'))
 
     def plot2():
       fig, ax = plt.subplots()
@@ -120,7 +122,7 @@ if __name__ == '__main__':
       ax.grid()
       ax.legend()
 
-      fig.savefig(str(output_dir_path / '3_2b.png'))
+      fig.savefig(str(output_dir_path / '3-2b.png'))
 
     plot1()
     plot2()
@@ -138,7 +140,7 @@ if __name__ == '__main__':
       Algorithm(lambda graph: algorithms.cover_optimal4(graph), 'Avec branchement amélioré 2', cm.Purples)
     ]
 
-    cover_size, exec_time, explored_node_count = benchmark(benchmark_algorithms, sample_count=2, n_values=n_values, p_values=p_values)
+    cover_size, exec_time, explored_node_count = benchmark(benchmark_algorithms, sample_count=20, n_values=n_values, p_values=p_values)
 
     normalize_p = create_normalize(p_values[:-1])
 
@@ -202,7 +204,7 @@ if __name__ == '__main__':
     plot_exec_time([1, 2, 3], [0, 2], name='4-3')
 
   def comparison_benchmark():
-    n_values = np.linspace(0, 50, 10, dtype=int)
+    n_values = np.linspace(0, 75, 10, dtype=int)
     p_values = [0.25, 0.5]
 
     benchmark_algorithms = [
@@ -237,6 +239,6 @@ if __name__ == '__main__':
     fig.savefig(str(output_dir_path / '4-4.png'))
 
 
-  optimal_benchmark()
   suboptimal_benchmark()
+  optimal_benchmark()
   comparison_benchmark()
