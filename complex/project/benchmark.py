@@ -1,13 +1,11 @@
-import math
-import pickle
 from dataclasses import dataclass
+from matplotlib import cm, colors
+from matplotlib import pyplot as plt
 from pathlib import Path
 from time import time_ns
 from typing import Any, Callable, Collection, Sequence
-
+import math
 import numpy as np
-from matplotlib import cm, colors
-from matplotlib import pyplot as plt
 
 from . import algorithms
 from .graph import Graph
@@ -70,8 +68,6 @@ if __name__ == '__main__':
     norm = colors.Normalize(vmin=min(values), vmax=max(values))
     return lambda x: norm(x) * 0.4 + 0.4
 
-
-  # Question 3 2
 
   def suboptimal_benchmark():
     n_values = np.linspace(0, 150, 10, dtype=int)
@@ -141,7 +137,6 @@ if __name__ == '__main__':
     ]
 
     cover_size, exec_time, explored_node_count = benchmark(benchmark_algorithms, sample_count=20, n_values=n_values, p_values=p_values)
-
     normalize_p = create_normalize(p_values[:-1])
 
 

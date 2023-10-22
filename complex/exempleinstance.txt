@@ -1,0 +1,17 @@
+Nombre de sommets
+5
+Sommets
+0
+1
+2
+3
+4
+Nombre d aretes
+6
+Aretes
+0 1
+3 2
+4 1
+0 3
+4 2
+1 2
