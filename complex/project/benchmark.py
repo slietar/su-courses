@@ -66,7 +66,7 @@ if __name__ == '__main__':
 
   def create_normalize(values: Collection[float], /):
     norm = colors.Normalize(vmin=min(values), vmax=max(values))
-    return lambda x: norm(x) * 0.5 + 0.3
+    return lambda x: norm(x) * 0.4 + 0.4
 
 
   # Question 3 2
@@ -147,12 +147,17 @@ if __name__ == '__main__':
       def plot1():
         fig, ax = plt.subplots()
 
+        dummy_line, = ax.plot([0], marker='None', linestyle='None')
+        lines = list()
+
         for algorithm_index in algorithm_indices:
           algorithm = benchmark_algorithms[algorithm_index]
+          lines.append(dummy_line)
 
           for p_index in p_indices:
             p = p_values[p_index]
-            ax.plot(n_values, exec_time[algorithm_index, :, :, p_index].mean(axis=0), color=algorithm.color(normalize_p(max(p_values) if p < 0 else p)), label=f"{algorithm.label} (p = {p_labels[p_index]})", linestyle=('dashed' if p < 0 else 'solid'))
+            line, = ax.plot(n_values, exec_time[algorithm_index, :, :, p_index].mean(axis=0), color=algorithm.color(normalize_p(max(p_values) if p < 0 else p)), label=f"{algorithm.label} (p = {p_labels[p_index]})", linestyle=('dashed' if p < 0 else 'solid'))
+            lines.append(line)
 
         ax.set_yscale('log')
         ax.set_xlabel('Nombre de sommets n')
@@ -160,19 +165,24 @@ if __name__ == '__main__':
         ax.xaxis.get_major_locator().set_params(integer=True)
         ax.grid()
         ax.set_title('''Temps d'éxécution des algorithmes de branch and bound''')
-        ax.legend()
+        ax.legend(lines, [label for algorithm_index in algorithm_indices for label in [rf'{benchmark_algorithms[algorithm_index].label}', *(f"p = {p_labels[p_index]}" for p_index in p_indices)]])
 
         fig.savefig(str(output_dir_path / f'{name}a.png'))
 
       def plot2():
         fig, ax = plt.subplots()
 
+        dummy_line, = ax.plot([0], marker='None', linestyle='None')
+        lines = list()
+
         for algorithm_index in algorithm_indices:
           algorithm = benchmark_algorithms[algorithm_index]
+          lines.append(dummy_line)
 
           for p_index in p_indices:
             p = p_values[p_index]
-            ax.plot(n_values, explored_node_count[algorithm_index, :, :, p_index].mean(axis=0), color=algorithm.color(normalize_p(max(p_values) if p < 0 else p)), label=f"{algorithm.label} (p = {p_labels[p_index]})", linestyle=('dashed' if p < 0 else 'solid'))
+            line, = ax.plot(n_values, explored_node_count[algorithm_index, :, :, p_index].mean(axis=0), color=algorithm.color(normalize_p(max(p_values) if p < 0 else p)), label=f"{algorithm.label} (p = {p_labels[p_index]})", linestyle=('dashed' if p < 0 else 'solid'))
+            lines.append(line)
 
         ax.set_yscale('log')
         ax.set_xlabel('Nombre de sommets n')
@@ -180,7 +190,7 @@ if __name__ == '__main__':
         ax.xaxis.get_major_locator().set_params(integer=True)
         ax.grid()
         ax.set_title('''Nombre de nœuds explorés par les algorithmes de branch and bound''')
-        ax.legend()
+        ax.legend(lines, [label for algorithm_index in algorithm_indices for label in [rf'{benchmark_algorithms[algorithm_index].label}', *(f"p = {p_labels[p_index]}" for p_index in p_indices)]])
 
         fig.savefig(str(output_dir_path / f'{name}b.png'))
 
