@@ -41,14 +41,6 @@ def benchmark(algorithms: list[Algorithm], sample_count: int, n_values: Collecti
 
   return cover_size, exec_time.clip(min=1e-3), explored_node_count
 
-#   with Path("out.pickle").open("wb") as file:
-#     pickle.dump((cover_size, exec_time), file)
-# else:
-#   with Path("out.pickle").open("rb") as file:
-#     cover_size, exec_time = pickle.load(file)
-
-# print(cover_size)
-
 
 if __name__ == '__main__':
   plt.rcParams['font.family'] = 'Helvetica Neue'

@@ -293,6 +293,7 @@ def cover_optimal5(input_graph: Graph):
       graph1.remove_vertex(vertex1)
       node1 = Node.derive(graph1, node.vertices | {vertex1})
 
+      # Eliminate vertex2 if it has degree 1
       if graph_degrees[vertex2] > 1:
         neighbor_vertices = graph2.neighbors(vertex1)
         assert vertex2 in neighbor_vertices
