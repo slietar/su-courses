@@ -29,8 +29,8 @@ def _partition(items: T, size: int) -> list[T]:
 
 
 def align_nw(
-    seq1: list[str],
-    seq2: list[str],
+    seq1: Sequence[str],
+    seq2: Sequence[str],
     *,
     alphabet: Optional[list[str]] = None,
     distance_matrix: Optional[np.ndarray] = None,
@@ -42,6 +42,8 @@ def align_nw(
 
   seq1_n = [alphabet.index(x) for x in seq1]
   seq2_n = [alphabet.index(x) for x in seq2]
+
+  # Score matrix construction
 
   score = np.zeros((len(seq1) + 1, len(seq2) + 1))
   arrows= np.zeros((len(seq1) + 1, len(seq2) + 1), dtype=np.uint8)
@@ -56,14 +58,15 @@ def align_nw(
     for index2, letter2 in enumerate(seq2_n, start=1):
       match_score = distance_matrix[letter1, letter2]
 
-      a = score[index1, index2 - 1] + (gap_score_extension if arrows[index1, index2 - 1] == 1 else gap_score_open)
-      b = score[index1 - 1, index2] + (gap_score_extension if arrows[index1 - 1, index2] == 2 else gap_score_open)
+      a = score[index1, index2 - 1] + (gap_score_extension if (arrows[index1, index2 - 1] & 1) != 0 else gap_score_open)
+      b = score[index1 - 1, index2] + (gap_score_extension if (arrows[index1 - 1, index2] & 2) != 0 else gap_score_open)
       c = score[index1 - 1, index2 - 1] + match_score
       m = max(a, b, c)
 
       score[index1, index2] = m
       arrows[index1, index2] = _pack([a == m, b == m, c == m])
 
+  # Traceback
 
   position = (len(seq1), len(seq2))
   seq1_a = list[str]()
@@ -84,6 +87,9 @@ def align_nw(
       position = (position[0] - 1, position[1] - 1)
     else:
       raise RuntimeError
+
+  # print('\n'.join(' '.join(('←' if (y & 1) else ('↑' if (y & 2) else '↖︎')) for y in x) for x in arrows))
+  # print('\n'.join('|'.join((('←' if (y & 1) else ' ') + ('↑' if (y & 2) else ' ') + ('↖︎' if (y & 4) else ' ')) for y in x) for x in arrows))
 
   return str().join(list(reversed(seq1_a))), str().join(list(reversed(seq2_a)))
 
