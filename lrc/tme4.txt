@@ -1,4 +1,5 @@
 Compte rendu TME4
+Simon Liétar
 
 
 # Exercice 1
@@ -12,7 +13,7 @@ Compte rendu TME4
 
 # Exercice 2
 
-...
+Dans le sens ¬Kp ← K¬Kp, la formule est vraie dans S4 et S5 du fait de l'axiome T. En revanche, dans le sens ¬Kp → K¬Kp, l'axiome 5 est nécessaire et la formule ne peut être vraie que dans S5.
 
 
 # Exercice 3

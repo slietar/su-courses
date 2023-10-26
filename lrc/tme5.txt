@@ -1,0 +1,23 @@
+Compte rendu TME5
+Simon Liétar
+
+
+Exercice 2
+
+On a créé les règles suivantes :
+
+- Règle d'initialisation pour créer la Abox
+- Règle pour a : C ⊓ D
+  L'instance a appartient à C et D, donc ajout de a : C et a : D.
+- Règle pour a : C ⊔ D
+  L'instance a appartient à C ou D, donc duplication du modèle en fonction des deux possibilités, l'une où a : C et l'autre a : D.
+- Règle pour a : ∀R.C et a, e : R
+  Tous les instances en couple avec a dans le rôle R appartienent à C, et le couple a et e appartient au rôle R, donc e appartient à C soit e : C.
+- Règle qui marque [Done] l'assertion ∃R.C s'il existe e : C et a, e : R
+- Règle pour a : ∃R.C (non marqué [Done])
+  S'il n'existe pas, on crée une instance b qui appartient à C et en couple avec a dans le rôle R, donc b : C et a, b : R.
+- Règle d'arrêt si a : C ou a : ¬C
+  Clash
+
+
+Impossible de sauvegarder le fichier XML en raison d'un bug dans Lotrec
