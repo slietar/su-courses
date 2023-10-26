@@ -198,7 +198,7 @@ def align_sw(seq1: Sequence[str], seq2: Sequence[str], *,
     seq1_a = seq1_a[::-1]
     seq2_a = seq2_a[::-1]
 
-    return (str().join(seq1_a), str().join(seq2_a)), (position[0] - 1, position[1] - 1)
+    return (str().join(seq1_a), str().join(seq2_a)), (position[0] + 1, position[1] + 1)
 
 
 # Align sequences and print the formatted result
