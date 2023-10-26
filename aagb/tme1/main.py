@@ -29,13 +29,13 @@ def _partition(items: T, size: int) -> list[T]:
 
 
 def align_nw(
-    seq1: Sequence[str],
-    seq2: Sequence[str],
-    *,
-    alphabet: Optional[list[str]] = None,
-    distance_matrix: Optional[np.ndarray] = None,
-    gap_score_open: int = -2,
-    gap_score_extension: int = -1
+  seq1: Sequence[str],
+  seq2: Sequence[str],
+  *,
+  alphabet: Optional[list[str]] = None,
+  distance_matrix: Optional[np.ndarray] = None,
+  gap_score_open: int = -2,
+  gap_score_extension: int = -1
 ):
   alphabet = list(set(seq1) | set(seq2)) if alphabet is None else alphabet
   distance_matrix = base_distance_matrix(alphabet, match_score=1, mismatch_score=-2) if distance_matrix is None else distance_matrix
@@ -111,6 +111,8 @@ def format_alignment(seq1: str, seq2: str, label1: str, label2: str, *, width: i
 # print(a)
 # print(_partition(list(a), 80))
 
+print('Needleman-Wunsch')
+
 with Path('blosum62.txt').open('rt') as file:
   blosum62_alphabet = file.readline()[0:-1].split(' ')
   blosum62_matrix = np.loadtxt(file, delimiter=' ', dtype=int)
@@ -125,42 +127,12 @@ a, b = align_nw(
   gap_score_extension=-1
 )
 
-print(format_alignment(a, b, '2ABL', '1OPK', width=80))
+print(format_alignment(a, b, '2ABL', '1OPK'))
 
 
+# SMITH-WATERMAN
 
-
-
-#SMITH-WATERMAN
-
-from pathlib import Path
-from typing import Optional, Sequence, TypeVar
-import urllib.request
-import numpy as np
-
-def base_distance_matrix(alphabet: list[str], *, match_score: float, mismatch_score: float):
-    return np.ones((len(alphabet), len(alphabet)), dtype=int) * mismatch_score + (match_score - mismatch_score) * np.identity(len(alphabet), dtype=int)
-
-def _fetch_rcsb_sequence(name: str):
-    response = urllib.request.urlopen(f'https://www.rcsb.org/fasta/entry/{name}')
-
-    while raw_line := response.readline().decode():
-        line = raw_line.rstrip()
-
-        if not line.startswith('>'):
-            return line
-
-    raise RuntimeError('No sequence found')
-
-def _pack(values: Sequence[bool]):
-    return sum((1 << i) if values[i] else 0 for i in range(len(values)))
-
-T = TypeVar('T', str, list)
-
-def _partition(items: T, size: int) -> list[T]:
-    return [items[index:(index + size)] for index in range(0, len(items), size)]
-
-def align_nw(seq1: Sequence[str], seq2: Sequence[str], *,
+def align_sw(seq1: Sequence[str], seq2: Sequence[str], *,
              alphabet: Optional[list[str]] = None,
              distance_matrix: Optional[np.ndarray] = None,
              gap_score_open: int = -2,
@@ -226,25 +198,14 @@ def align_nw(seq1: Sequence[str], seq2: Sequence[str], *,
     seq1_a = seq1_a[::-1]
     seq2_a = seq2_a[::-1]
 
-    return str().join(seq1_a), str().join(seq2_a),position
+    return (str().join(seq1_a), str().join(seq2_a)), (position[0] - 1, position[1] - 1)
 
-def format_alignment(seq1: str, seq2: str, label1: str, label2: str, *, width: int = 80):
-    label_size = max(len(label1), len(label2)
-                     )
-    format_match = lambda a, b: ('|' if a == b else ':') if (a != '-' and b != '-') else ' '
-
-    return '\n\n\n'.join([
-        f'''{label1:{label_size}} {line1}\n{' ' * label_size} {str().join(format_match(x, y) for x, y in zip(line1, line2))}\n{label2:{label_size}} {line2}'''
-        for line1, line2 in zip(_partition(seq1, width), _partition(seq2, width))
-    ])
-
-# Load the Blosum62 matrix
-with Path('blosum62.txt').open('rt') as file:
-    blosum62_alphabet = file.readline()[0:-1].split(' ')
-    blosum62_matrix = np.loadtxt(file, delimiter=' ', dtype=int)
 
 # Align sequences and print the formatted result
-a, b, position = align_nw(
+
+print('\nSmith-Waterman')
+
+(a, b), position = align_sw(
     list(_fetch_rcsb_sequence('2ABL')),
     list(_fetch_rcsb_sequence('1OPK')),
     alphabet=blosum62_alphabet,
@@ -253,6 +214,6 @@ a, b, position = align_nw(
     gap_score_extension=-1
 )
 
-print("position on the first sequence:",position[0])
-print("position sur la deuxième séquence:",position[1])
-print(format_alignment(a, b, '2ABL', '1OPK', width=80))
+print('Starting position on 2ABL:', position[0])
+print('Starting position on 1OPK:', position[1])
+print(format_alignment(a, b, '2ABL', '1OPK'))
