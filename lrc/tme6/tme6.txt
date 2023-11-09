@@ -1,0 +1,27 @@
+Compte rendu TME6
+Simon Liétar
+
+
+# Exercice 1
+
+2.
+  (i) Cette annonce est impossible car il n'y a pas de monde où a sait que b possède la carte verte. La structure de Kripke est vide.
+  (ii) Il n'y a pas de changement à la structure de Kripke car tout le monde savait déjà que a ne sait pas que b possède la carte verte.
+
+3.
+  (i) Tous les joueurs peuvent savoir les cartes des autres. Le seul monde restant est rvj.
+  (ii) Lors de la première annonce, les mondes rvj et vrj où c possède la carte jaune (et donc le sait) sont supprimés. Lors de la seconde annonce, les mondes vjr et rjv sont supprimés. Lors de la troisième annonce, le monde jvr est supprimé. Il reste donc le monde jrv.
+
+4. L'ordre des annonces a une importance. Par exemple, en inversant les deux premières annonces de la séquence (i), on ne peut plus faire la différence entre les mondes rvj et vrj, à moins de réexécuter la première annonce sur la structure.
+
+
+# Exercice 2
+
+2. On définit le fait pour un agent i de connaître la date d'anniversaire comme un disjonction où l'agent i connait sait que l'anniversaire est tel jour, ou il sait qu'il est tel autre jour, ou il sait qu'il est encore tel autre jour, etc.
+
+3.
+  (i) Tous les mondes correspondant à des mois où Bernard pourrait connaître la date d'anniversaire sont supprimés, c'est-à-dire les 15, 16 et 19 mai et 17 et 18 juin.
+  (ii) Tous les mondes où Bernard hésitait entre deux dates sont supprimés, c'est-à-dire les 14 juillet et 14 août.
+  (iii) Tous les mondes où Albert hésitait entre deux dates sont supprimés, c'est-à-dire les 15 août et 17 août. Il ne reste plus que le 16 juillet.
+
+4. Le début de l'annonce (i) est superflue car elle déjà connue de Bernard.
