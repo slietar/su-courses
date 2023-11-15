@@ -1,3 +1,5 @@
+from dataclasses import dataclass
+from typing import Self
 import numpy as np
 
 
@@ -56,7 +58,87 @@ def is_multrametric(matrix: np.ndarray):
 # print(is_multrametric(M4))
 
 
-def upgma(matrix: np.ndarray):
-  print(np.stack(matrix, axis=-1))
+@dataclass
+class Leaf:
+  value: int
 
-print(upgma(M1))
+@dataclass
+class Node:
+  children: list[tuple[Self | Leaf, float]]
+
+  def _newick(self) -> str:
+    return '(' + ','.join([(chr(ord('A') + child.value) if isinstance(child, Leaf) else child._newick()) + f':{dist:.2f}' for child, dist in self.children]) + ')'
+
+  def newick(self):
+    return self._newick() + ';'
+
+# def add_nodes(a: Node | Leaf, b: Node | Leaf, da: float, db: float):
+#   match a, b:
+#     case (Node(), Node()) | (Leaf(), Leaf()):
+#       return Node([
+#         (a, da),
+#         (b, db)
+#       ])
+#     case Node(a_children), Leaf():
+#       return Node([
+#         *a_children,
+#         (b, da + db)
+#       ])
+#     case Leaf(), Node(b_children):
+#       return Node([
+#         (a, da + db),
+#         *b_children
+#       ])
+#     case _, _:
+#       raise RuntimeError
+
+
+def nj(matrix: np.ndarray):
+  m = matrix.astype(np.float64)
+  clusters: list[Node | Leaf] = [Leaf(i) for i in range(len(m))]
+
+  while (n := len(m)) > 2:
+    q: np.ndarray = (n - 2) * m - m.sum(axis=0) - m.sum(axis=1, keepdims=True)
+    q[np.diag_indices_from(q)] = np.inf
+
+    a, b = np.unravel_index(q.argmin(), q.shape)
+    a = int(a)
+    b = int(b)
+
+    da = 0.5 * m[a, b] + 0.5 / (n - 2) * (m[a, :].sum() - m[b, :].sum())
+    db = m[a, b] - da
+
+    clusters.append(Node([
+      (clusters[a], da),
+      (clusters[b], db)
+    ]))
+
+    del clusters[max(a, b)]
+    del clusters[min(a, b)]
+
+    new_row = 0.5 * (m[a, :] + m[b, :] - m[a, b])
+
+    indices = [i for i in range(n) if i != a and i != b]
+    m = m[indices, :][:, indices]
+    m = np.pad(m, (0, 1))
+
+    m[0:-1, -1] = new_row[indices]
+    m[-1, 0:-1] = new_row[indices]
+
+  root = Node([
+    (clusters[0], m[0, 1] * 0.5),
+    (clusters[1], m[0, 1] * 0.5)
+  ])
+
+  return root.newick()
+
+
+x = np.array([
+  [0, 5, 9, 9, 8],
+  [5, 0, 10, 10, 9],
+  [9, 10, 0, 8, 7],
+  [9, 10, 8, 0, 3],
+  [8, 9, 7, 3, 0]
+], dtype=np.float64)
+
+print(nj(x))
