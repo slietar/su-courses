@@ -1,0 +1,35 @@
+Compte rendu TME7
+Simon Liétar
+
+
+Exercice 4
+
+1. On a bien pere(pepin, charlemagne) et mere(berthe, charlemagne) qui sont satisfaits.
+2. Avec parent(X, charlemagne) on a les solutions X = pepin et X = berthe.
+3. Avec parent(charlemagne, X) on a les solutions X = alpais et X = adelaide, c'est-à-dire les enfants de Charlemagne.
+  Avec parent(pepin, Y) on a les solutions Y = charlemagne et Y = carloman, c'est-à-dire les enfants de Pépin.
+  Avec parent(A, B) on a les 8 couples parent-enfant tels que (A = pepin, B = charlemagne), (A = pepin, B = carloman), etc.
+4. Avec parents(A, B, charlemagne) on a la solution A = pepin et B = berthe, c'est-à-dire les parents de Charlemagne.
+  Avec parents(charlemagne, A, B) on a les solutions (A = himiltrude, B = alpais) et (A = hildegarde, B = adelaide), c'est-à-dire tous les enfants de Charlemagne avec leur mère respective.
+5. Avec grandPere(A, B) on a les solutions (A = pepin, B = alpais) et (A = pepin, B = adelaide) car Pépin est le grand-père de Alpaïs et d'Adélaïde.
+  Avec frereOuSoeur(adelaide, X) on a bien X = alpais.
+6. Avec ancetre(X, charlemagne), on a les solutions X = pepin et X = berthe, c'est-à-dire les ancêtres de Charlemagne.
+  Avec ancetre(charlemagne, X), on a les solutions X = alpais et X = adelaide, c'est-à-dire les descendants de Charlemagne.
+
+
+Exercice 5
+
+2. Avec et(X, Y, 1) la solution est X = Y, Y = 1 donc X et Y doivent être à 1.
+  Avec et(0, 0, R) la solution est R = 0, donc la résultat de ce ET est 0.
+  Avec et(X, Y, R) quatre solutions correspondant aux quatre faits sont retournés.
+3. On définit une variable pour chaque cable dans le circuit entre deux portes logiques. La porte nand est transformée en porte NON et ET.
+4. La table de véritié de circuit(X, Y, Z) est la suivante :
+  X Y Z
+  0 1 1
+  0 0 1
+  1 1 1
+  1 0 0
+  C'est bien la table de vérité de l'implication.
+5. En testant quelles valeurs de X et Y renvoient 0, c'est-à-dire circuit(X, Y, 0), la seule solution est X = 1, Y = 0.
+  Si Y = 0, on peut tester quelles valeurs de X renvoient 1, c'est-à-dire circuit(X, 0, 1), et la seule solution est X = 0 dans le cas où la prémisse serait fausse.
+  Si X = 0, on peut tester quelles valeurs de Y renvoient 1, c'est-à-dire circuit(0, Y, 1), et les solutions sont Y = 0 et Y = 1 car la prémisse est fausse.
