@@ -79,7 +79,7 @@ def sankoff(tree: Tree):
     else:
       nucleotide = metadata[node].distribution.argmin()
 
-    metadata[node].value = int(nucleotide)
+    metadata[node].value = int(nucleotide) # int() is only for the type checker
     node.name = (f'{node.name} ' if node.name else str()) + f'[{nucleotides[nucleotide]}]'
 
   return metadata[tree].distribution[metadata[tree].value]
