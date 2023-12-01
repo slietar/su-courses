@@ -1,0 +1,3 @@
+[submodule "mogpl/project"]
+	path = mogpl/project
+	url = git@gitlab.com:parakawa/mogpl-projet.git
