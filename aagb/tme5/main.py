@@ -76,8 +76,8 @@ class Graph:
 #   fig.savefig(f'out_{name}.png')
 
 
-# with Path('reseau3.txt').open() as file:
-#   graph = Graph.parse(file)
+with Path('reseau3.txt').open() as file:
+  graph = Graph.parse(file)
 
 # print(graph.clustering_coefficients[[0, 11, 22, 32, 35]])
 # print(g.clustering_coefficients.mean())
@@ -136,9 +136,7 @@ g = Graph(np.array([
 
 dist = apd(g.matrix)
 
-shortest_path_counts = np.zeros((g.vertex_count, g.vertex_count), dtype=int)
-# shortest_path_counts = g.matrix.astype(int)
-shortest_path_incl = np.zeros((g.vertex_count, g.vertex_count, g.vertex_count), dtype=int)
+# shortest_path_counts = np.zeros((g.vertex_count, g.vertex_count), dtype=int)
 
 # def walk():
 #   # b = np.argmax(g.matrix[a, :])
@@ -157,51 +155,75 @@ shortest_path_incl = np.zeros((g.vertex_count, g.vertex_count, g.vertex_count), 
 #             shortest_path_counts[a, b] += shortest_path_counts[a, m] * shortest_path_counts[b, m]
 #             shortest_path_counts[b, a] += shortest_path_counts[a, m] * shortest_path_counts[b, m]
 
-def walk():
-  degrees = g.matrix.sum(axis=0)
-  n = len(g.matrix)
+def walk(graph: Graph):
+  shortest_path_counts = graph.matrix.astype(int)
+  shortest_path_incl = np.zeros((graph.vertex_count, graph.vertex_count, graph.vertex_count), dtype=int)
 
-  paths = list[tuple[int, set[int]]]()
+  while True:
+  # for i in range(1):
+    # d = ((shortest_path_counts == 0) & ~np.eye(n, dtype=bool)).sum(axis=0)
+    d = (shortest_path_counts == 0).sum(axis=0)
+    f = d.argmax()
 
-  f = degrees.argmin()
-  paths.append((f, set()))
+    # print(shortest_path_counts)
+    # print('>', f, d[f])
+    # print(graph.matrix[f, :].astype(int))
+    # break
 
-  explored = {f}
 
-  # for _ in range(5):
-  while paths:
-    # print('---')
+    if d[f] <= 1:
+      break
 
-    new_explored = set[int]()
-    new_paths = list[tuple[int, set[int]]]()
+    paths = list[tuple[int, set[int]]]()
 
-    for a, ancestors in paths:
-      for b in range(n):
-        if not (b in explored) and g.matrix[a, b]:
-          # print(a, b)
+    # f = degrees.argmin()
+    # f = 4
+    paths.append((f, set()))
 
-          if not b in new_explored:
-            new_paths.append((b, ancestors | {a}))
-            new_explored.add(b)
-          else:
-            path = next(path for path in new_paths if path[0] == b)
-            path[1].add(a)
+    explored = {f}
 
-          shortest_path_counts[a, b] = 1
-          shortest_path_counts[b, a] = 1
+    # for _ in range(2):
+    while paths:
+      # print('---')
 
-          for l in ancestors:
-            # print(l, a, b)
-            shortest_path_counts[l, b] += shortest_path_counts[l, a]
-            shortest_path_counts[b, l] += shortest_path_counts[l, a]
+      new_explored = set[int]()
+      new_paths = list[tuple[int, set[int]]]()
 
-          # print()
+      mask = shortest_path_counts == 0
 
-    explored |= new_explored
-    paths = new_paths
-    # print(paths)
+      for a, ancestors in paths:
+        for b in range(graph.vertex_count):
+          if not (b in explored) and graph.matrix[a, b]:
+            # print(a, b)
 
-walk()
+            if not b in new_explored:
+              new_paths.append((b, ancestors | {a}))
+              new_explored.add(b)
+            else:
+              path = next(path for path in new_paths if path[0] == b)
+              path[1].add(a)
 
-print(shortest_path_counts)
+            shortest_path_counts[a, b] = 1
+            shortest_path_counts[b, a] = 1
+
+            for l in ancestors:
+              # print(l, a, b)
+              shortest_path_counts[l, b] += shortest_path_counts[l, a] * mask[l, b]
+              shortest_path_counts[b, l] += shortest_path_counts[l, a] * mask[l, b]
+
+            # print()
+
+      explored |= new_explored
+      paths = new_paths
+      # print(paths)
+
+  # print(i)
+  return shortest_path_counts
+
+  # x, y = np.where((shortest_path_counts == 0) & ~np.eye(n, dtype=bool))
+  # print(next(zip(x, y)))
+
+np.set_printoptions(linewidth=160, threshold=sys.maxsize)
+print(walk(graph))
+
 # print(shortest_path_incl.astype(int))
