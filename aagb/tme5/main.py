@@ -1,7 +1,6 @@
 import functools
 import sys
 from typing import IO
-from networkx import shortest_path
 import numpy as np
 # from matplotlib import pyplot as plt
 from dataclasses import dataclass
@@ -60,7 +59,7 @@ class Graph:
       matrix[a, b] = True
       matrix[b, a] = True
 
-    print(*[f'{n}={vertex_names.index(n)}' for n in ['A', 'B', 'C', 'D', 'E']])
+    # print(*[f'{n}={vertex_names.index(n)}' for n in ['A', 'B', 'C', 'D', 'E']])
 
     return Graph(matrix)
 
@@ -77,8 +76,80 @@ class Graph:
 #   fig.savefig(f'out_{name}.png')
 
 
-with Path('reseau3.txt').open() as file:
+with Path('reseau2.txt').open() as file:
   graph = Graph.parse(file)
+
+
+def betweenness_centralities(matrix: np.ndarray):
+  n = len(matrix)
+
+  shortest_path_counts = matrix.astype(int)
+  shortest_path_incl = np.zeros((n, n, n), dtype=int)
+
+  for start_node in range(n):
+    for end_node in range(start_node):
+      queue: list[tuple[int, set[int]]] = [(start_node, set())]
+      explored_nodes = set[int]()
+      path_count = 0
+
+      while path_count < 1:
+        new_queue = list[tuple[int, set[int]]]()
+
+        for current_node, path in queue:
+          for next_node in range(n):
+            if not matrix[current_node, next_node]:
+              continue
+
+            if next_node == end_node:
+              path_count += 1
+
+              for middle_node in path:
+                shortest_path_incl[middle_node, start_node, end_node] += 1
+                shortest_path_incl[middle_node, end_node, start_node] += 1
+            else:
+              if next_node in explored_nodes:
+                continue
+
+              explored_nodes.add(next_node)
+
+              new_queue.append((next_node, path | {next_node}))
+
+        queue = new_queue
+
+        shortest_path_counts[start_node, end_node] = path_count
+        shortest_path_counts[end_node, start_node] = path_count
+
+  print(shortest_path_incl)
+  print(shortest_path_counts)
+
+  return (shortest_path_incl / np.maximum(shortest_path_counts, 1)).sum(axis=(1, 2))
+
+
+g = Graph(np.array([
+  [0, 1, 0, 0, 0, 0, 0, 0],
+  [1, 0, 1, 0, 1, 0, 0, 0],
+  [0, 1, 0, 1, 0, 0, 0, 0],
+  [0, 0, 1, 0, 1, 1, 0, 1],
+  [0, 1, 0, 1, 0, 0, 0, 0],
+  [0, 0, 0, 1, 0, 0, 1, 0],
+  [0, 0, 0, 0, 0, 1, 0, 1],
+  [0, 0, 0, 1, 0, 0, 1, 0]
+]).astype(bool))
+
+g = Graph(np.array([
+  [0, 1, 0, 0, 0],
+  [1, 0, 1, 0, 1],
+  [0, 1, 0, 1, 0],
+  [0, 0, 1, 0, 1],
+  [0, 1, 0, 1, 0],
+]).astype(bool))
+
+np.set_printoptions(linewidth=160, threshold=sys.maxsize, suppress=True)
+
+# s = [0, 11, 22, 32, 35]
+# print(betweenness_centralities(graph.matrix)[s] / 2)
+print(betweenness_centralities(g.matrix))
+
 
 # print(graph.clustering_coefficients[[0, 11, 22, 32, 35]])
 # print(g.clustering_coefficients.mean())
@@ -100,179 +171,167 @@ def apd(a: np.ndarray):
   return 2 * t - (x < t * degrees)
 
 
-# x = np.array([
-#   # [0, 1, 0],
-#   # [1, 0, 1],
-#   # [0, 1, 0]
+# # x = np.array([
+# #   # [0, 1, 0],
+# #   # [1, 0, 1],
+# #   # [0, 1, 0]
 
+# #   [0, 1, 0, 0],
+# #   [1, 0, 1, 0],
+# #   [0, 1, 0, 1],
+# #   [0, 0, 1, 0]
+# # ]).astype(bool)
+
+# # np.set_printoptions(threshold=sys.maxsize)
+
+# # s = [0, 11, 22, 32, 35]
+# # print(apd(g.matrix)[0, :])
+# # # print(g.matrix[0, :].astype(int))
+# # # print(g.matrix[:, 0].astype(int))
+# # print(apd(g.matrix)[s, :][:, s])
+# # # print(apd(g.matrix)[:, s][s, :])
+
+# # # print(apd(x))
+
+
+# dist = apd(g.matrix)
+
+# # shortest_path_counts = np.zeros((g.vertex_count, g.vertex_count), dtype=int)
+
+# # def walk():
+# #   # b = np.argmax(g.matrix[a, :])
+# #   # # c = np.argmax([0 if i == a else n for i, n in enumerate(g.matrix[b, :])])
+# #   # c = 2
+# #   # shortest_path_counts[a, b] += 1
+
+# #   for a in range(g.vertex_count):
+# #     for b in range(a):
+# #       d = dist[a, b]
+
+# #       if a != b and shortest_path_counts[a, b] < 1:
+# #         # if all()
+# #         for m in range(g.vertex_count):
+# #           if a != m and b != m and g.matrix[a, m] and g.matrix[b, m] and (dist[a, m] + dist[b, m] == d):
+# #             shortest_path_counts[a, b] += shortest_path_counts[a, m] * shortest_path_counts[b, m]
+# #             shortest_path_counts[b, a] += shortest_path_counts[a, m] * shortest_path_counts[b, m]
+
+# def walk(graph: Graph):
+#   shortest_path_counts = graph.matrix.astype(int)
+#   shortest_path_incl = np.zeros((graph.vertex_count, graph.vertex_count, graph.vertex_count), dtype=int)
+
+#   # while True:
+#   for i in range(1):
+#     # d = ((shortest_path_counts == 0) & ~np.eye(n, dtype=bool)).sum(axis=0)
+#     d = (shortest_path_counts == 0).sum(axis=0)
+#     f = d.argmax()
+#     f = 0
+
+#     # print(shortest_path_counts)
+#     # print('>', f, d[f])
+#     # print(graph.matrix[f, :].astype(int))
+#     # break
+
+
+#     if d[f] <= 1:
+#       break
+
+#     paths = list[tuple[int, set[int]]]()
+
+#     # f = degrees.argmin()
+#     # f = 4
+#     paths.append((f, set()))
+
+#     explored = {f}
+
+#     # for _ in range(2):
+#     while paths:
+#       # print('---')
+
+#       new_explored = set[int]()
+#       new_paths = list[tuple[int, set[int]]]()
+
+#       mask = shortest_path_counts == 0
+
+#       for a, ancestors in paths:
+#         for b in range(graph.vertex_count):
+#           if not (b in explored) and graph.matrix[a, b]:
+#             # print(a, b)
+
+#             if not b in new_explored:
+#               new_paths.append((b, ancestors | {a}))
+#               new_explored.add(b)
+#             else:
+#               path = next(path for path in new_paths if path[0] == b)
+#               path[1].add(a)
+
+#             shortest_path_counts[a, b] = 1
+#             shortest_path_counts[b, a] = 1
+
+#             for l in ancestors:
+#               # print(l, a, b)
+#               shortest_path_counts[l, b] += shortest_path_counts[l, a] * mask[l, b]
+#               shortest_path_counts[b, l] += shortest_path_counts[l, a] * mask[l, b]
+
+#             # print()
+
+#       explored |= new_explored
+#       paths = new_paths
+#       # print(paths)
+
+#     # distances = apd(graph.matrix)
+#     # y = distances + distances[..., None]
+#     # z = y == distances[:, None, :]
+
+#     # # print(shortest_path_counts[:, f, None].shape, shortest_path_counts[None, f, :].shape)
+#     # shortest_path_counts += (shortest_path_counts[:, f, None] @ shortest_path_counts[None, f, :]) * (shortest_path_counts == 0) * z[:, f, :]
+
+#   # print(i)
+#   return shortest_path_counts
+
+#   # x, y = np.where((shortest_path_counts == 0) & ~np.eye(n, dtype=bool))
+#   # print(next(zip(x, y)))
+
+# np.set_printoptions(linewidth=160, threshold=sys.maxsize)
+
+# # print(walk(graph))
+
+
+# x = np.array([
 #   [0, 1, 0, 0],
 #   [1, 0, 1, 0],
 #   [0, 1, 0, 1],
-#   [0, 0, 1, 0]
+#   [0, 0, 1, 0],
 # ]).astype(bool)
 
-# np.set_printoptions(threshold=sys.maxsize)
+# x = np.array([
+#   [0, 1, 0, 0, 0, 0, 0, 0],
+#   [1, 0, 1, 0, 0, 0, 0, 0],
+#   [0, 1, 0, 1, 1, 0, 0, 0],
+#   [0, 0, 1, 0, 0, 1, 0, 0],
+#   [0, 0, 1, 0, 0, 1, 0, 0],
+#   [0, 0, 0, 1, 1, 0, 1, 0],
+#   [0, 0, 0, 0, 0, 1, 0, 1],
+#   [0, 0, 0, 0, 0, 0, 1, 0],
+# ]).astype(bool)
 
-# s = [0, 11, 22, 32, 35]
-# print(apd(g.matrix)[0, :])
-# # print(g.matrix[0, :].astype(int))
-# # print(g.matrix[:, 0].astype(int))
-# print(apd(g.matrix)[s, :][:, s])
-# # print(apd(g.matrix)[:, s][s, :])
+# # distances = apd(g.matrix)
 
-# # print(apd(x))
+# # y = distances + distances[..., None]
+# # z = y == distances[:, None, :]
+# # # w = x * z
 
+# # # print(z[0, :, 7].astype(int))
+# # s = (z.sum(axis=(0, 2)) - 1) // 2 - len(distances) + 1
 
-g = Graph(np.array([
-  [0, 1, 0, 0, 0, 0, 0, 0],
-  [1, 0, 1, 0, 1, 0, 0, 0],
-  [0, 1, 0, 1, 0, 0, 0, 0],
-  [0, 0, 1, 0, 1, 1, 0, 1],
-  [0, 1, 0, 1, 0, 0, 0, 0],
-  [0, 0, 0, 1, 0, 0, 1, 0],
-  [0, 0, 0, 0, 0, 1, 0, 1],
-  [0, 0, 0, 1, 0, 0, 1, 0]
-]).astype(bool))
-
-
-dist = apd(g.matrix)
-
-# shortest_path_counts = np.zeros((g.vertex_count, g.vertex_count), dtype=int)
-
-# def walk():
-#   # b = np.argmax(g.matrix[a, :])
-#   # # c = np.argmax([0 if i == a else n for i, n in enumerate(g.matrix[b, :])])
-#   # c = 2
-#   # shortest_path_counts[a, b] += 1
-
-#   for a in range(g.vertex_count):
-#     for b in range(a):
-#       d = dist[a, b]
-
-#       if a != b and shortest_path_counts[a, b] < 1:
-#         # if all()
-#         for m in range(g.vertex_count):
-#           if a != m and b != m and g.matrix[a, m] and g.matrix[b, m] and (dist[a, m] + dist[b, m] == d):
-#             shortest_path_counts[a, b] += shortest_path_counts[a, m] * shortest_path_counts[b, m]
-#             shortest_path_counts[b, a] += shortest_path_counts[a, m] * shortest_path_counts[b, m]
-
-def walk(graph: Graph):
-  shortest_path_counts = graph.matrix.astype(int)
-  shortest_path_incl = np.zeros((graph.vertex_count, graph.vertex_count, graph.vertex_count), dtype=int)
-
-  # while True:
-  for i in range(1):
-    # d = ((shortest_path_counts == 0) & ~np.eye(n, dtype=bool)).sum(axis=0)
-    d = (shortest_path_counts == 0).sum(axis=0)
-    f = d.argmax()
-    f = 0
-
-    # print(shortest_path_counts)
-    # print('>', f, d[f])
-    # print(graph.matrix[f, :].astype(int))
-    # break
+# # # print(s)
+# # print(z.sum(axis=1) - 1)
+# # print(distances)
 
 
-    if d[f] <= 1:
-      break
+# # y = x.astype(int)
+# # u = ~np.eye(len(x), dtype=bool)
 
-    paths = list[tuple[int, set[int]]]()
-
-    # f = degrees.argmin()
-    # f = 4
-    paths.append((f, set()))
-
-    explored = {f}
-
-    # for _ in range(2):
-    while paths:
-      # print('---')
-
-      new_explored = set[int]()
-      new_paths = list[tuple[int, set[int]]]()
-
-      mask = shortest_path_counts == 0
-
-      for a, ancestors in paths:
-        for b in range(graph.vertex_count):
-          if not (b in explored) and graph.matrix[a, b]:
-            # print(a, b)
-
-            if not b in new_explored:
-              new_paths.append((b, ancestors | {a}))
-              new_explored.add(b)
-            else:
-              path = next(path for path in new_paths if path[0] == b)
-              path[1].add(a)
-
-            shortest_path_counts[a, b] = 1
-            shortest_path_counts[b, a] = 1
-
-            for l in ancestors:
-              # print(l, a, b)
-              shortest_path_counts[l, b] += shortest_path_counts[l, a] * mask[l, b]
-              shortest_path_counts[b, l] += shortest_path_counts[l, a] * mask[l, b]
-
-            # print()
-
-      explored |= new_explored
-      paths = new_paths
-      # print(paths)
-
-    # distances = apd(graph.matrix)
-    # y = distances + distances[..., None]
-    # z = y == distances[:, None, :]
-
-    # # print(shortest_path_counts[:, f, None].shape, shortest_path_counts[None, f, :].shape)
-    # shortest_path_counts += (shortest_path_counts[:, f, None] @ shortest_path_counts[None, f, :]) * (shortest_path_counts == 0) * z[:, f, :]
-
-  # print(i)
-  return shortest_path_counts
-
-  # x, y = np.where((shortest_path_counts == 0) & ~np.eye(n, dtype=bool))
-  # print(next(zip(x, y)))
-
-np.set_printoptions(linewidth=160, threshold=sys.maxsize)
-
-# print(walk(graph))
-
-
-x = np.array([
-  [0, 1, 0, 0],
-  [1, 0, 1, 0],
-  [0, 1, 0, 1],
-  [0, 0, 1, 0],
-]).astype(bool)
-
-x = np.array([
-  [0, 1, 0, 0, 0, 0, 0, 0],
-  [1, 0, 1, 0, 0, 0, 0, 0],
-  [0, 1, 0, 1, 1, 0, 0, 0],
-  [0, 0, 1, 0, 0, 1, 0, 0],
-  [0, 0, 1, 0, 0, 1, 0, 0],
-  [0, 0, 0, 1, 1, 0, 1, 0],
-  [0, 0, 0, 0, 0, 1, 0, 1],
-  [0, 0, 0, 0, 0, 0, 1, 0],
-]).astype(bool)
-
-# distances = apd(g.matrix)
-
-# y = distances + distances[..., None]
-# z = y == distances[:, None, :]
-# # w = x * z
-
-# # print(z[0, :, 7].astype(int))
-# s = (z.sum(axis=(0, 2)) - 1) // 2 - len(distances) + 1
-
-# # print(s)
-# print(z.sum(axis=1) - 1)
-# print(distances)
-
-
-# y = x.astype(int)
-# u = ~np.eye(len(x), dtype=bool)
-
-# print(((y @ y) * u) @ y)
+# # print(((y @ y) * u) @ y)
 
 
 def algo(matrix: np.ndarray):
@@ -303,4 +362,4 @@ def algo(matrix: np.ndarray):
 
 # algo(graph.matrix)
 # algo(g.matrix)
-algo(x)
+# algo(x)
