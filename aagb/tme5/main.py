@@ -1,6 +1,7 @@
 import functools
 import sys
 from typing import IO
+from networkx import shortest_path
 import numpy as np
 # from matplotlib import pyplot as plt
 from dataclasses import dataclass
@@ -59,7 +60,7 @@ class Graph:
       matrix[a, b] = True
       matrix[b, a] = True
 
-    # print(*[f'{n}={vertex_names.index(n)}' for n in ['A', 'B', 'C', 'D', 'E']])
+    print(*[f'{n}={vertex_names.index(n)}' for n in ['A', 'B', 'C', 'D', 'E']])
 
     return Graph(matrix)
 
@@ -159,11 +160,12 @@ def walk(graph: Graph):
   shortest_path_counts = graph.matrix.astype(int)
   shortest_path_incl = np.zeros((graph.vertex_count, graph.vertex_count, graph.vertex_count), dtype=int)
 
-  while True:
-  # for i in range(1):
+  # while True:
+  for i in range(1):
     # d = ((shortest_path_counts == 0) & ~np.eye(n, dtype=bool)).sum(axis=0)
     d = (shortest_path_counts == 0).sum(axis=0)
     f = d.argmax()
+    f = 0
 
     # print(shortest_path_counts)
     # print('>', f, d[f])
@@ -217,6 +219,13 @@ def walk(graph: Graph):
       paths = new_paths
       # print(paths)
 
+    # distances = apd(graph.matrix)
+    # y = distances + distances[..., None]
+    # z = y == distances[:, None, :]
+
+    # # print(shortest_path_counts[:, f, None].shape, shortest_path_counts[None, f, :].shape)
+    # shortest_path_counts += (shortest_path_counts[:, f, None] @ shortest_path_counts[None, f, :]) * (shortest_path_counts == 0) * z[:, f, :]
+
   # print(i)
   return shortest_path_counts
 
@@ -224,6 +233,74 @@ def walk(graph: Graph):
   # print(next(zip(x, y)))
 
 np.set_printoptions(linewidth=160, threshold=sys.maxsize)
-print(walk(graph))
 
-# print(shortest_path_incl.astype(int))
+# print(walk(graph))
+
+
+x = np.array([
+  [0, 1, 0, 0],
+  [1, 0, 1, 0],
+  [0, 1, 0, 1],
+  [0, 0, 1, 0],
+]).astype(bool)
+
+x = np.array([
+  [0, 1, 0, 0, 0, 0, 0, 0],
+  [1, 0, 1, 0, 0, 0, 0, 0],
+  [0, 1, 0, 1, 1, 0, 0, 0],
+  [0, 0, 1, 0, 0, 1, 0, 0],
+  [0, 0, 1, 0, 0, 1, 0, 0],
+  [0, 0, 0, 1, 1, 0, 1, 0],
+  [0, 0, 0, 0, 0, 1, 0, 1],
+  [0, 0, 0, 0, 0, 0, 1, 0],
+]).astype(bool)
+
+# distances = apd(g.matrix)
+
+# y = distances + distances[..., None]
+# z = y == distances[:, None, :]
+# # w = x * z
+
+# # print(z[0, :, 7].astype(int))
+# s = (z.sum(axis=(0, 2)) - 1) // 2 - len(distances) + 1
+
+# # print(s)
+# print(z.sum(axis=1) - 1)
+# print(distances)
+
+
+# y = x.astype(int)
+# u = ~np.eye(len(x), dtype=bool)
+
+# print(((y @ y) * u) @ y)
+
+
+def algo(matrix: np.ndarray):
+  distances = apd(matrix)
+
+  y = distances + distances[..., None]
+  z = y == distances[:, None, :]
+  node_count_in_paths = z.sum(axis=1) - 2
+
+  # print(distances)
+  # print(node_count_in_paths[0, 1])
+
+  shortest_path_counts = np.where(node_count_in_paths + 1 == distances, 1, 0)
+  shortest_path_counts += node_count_in_paths * (distances == 2) * (shortest_path_counts == 0)
+  # shortest_path_counts *= ~np.eye(len(matrix), dtype=bool)
+
+  for dist in range(3, distances.max() + 1):
+    # a = (shortest_path_counts[:, :, None] @ shortest_path_counts[:, None, :]) * z
+    a = np.einsum('im, mj, imj -> ij', shortest_path_counts, shortest_path_counts, z)
+    # print(a[0, 3] // (dist - 1) * (distances == dist))
+    # print(a.sum(axis=2) / (dist - 1))
+    # shortest_path_counts += (shortest_path_counts[:, :, None] @ shortest_path_counts[:, None, :]) * z[:, :, :] * (distances == dist) * (shortest_path_counts == 0)
+    shortest_path_counts += a // (dist - 1) * (distances == dist) * (shortest_path_counts == 0)
+
+  shortest_path_counts *= ~np.eye(len(matrix), dtype=bool)
+
+  print(shortest_path_counts)
+
+# algo(graph.matrix)
+# algo(g.matrix)
+algo(x)
