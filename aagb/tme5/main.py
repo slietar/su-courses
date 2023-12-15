@@ -3,6 +3,7 @@ import itertools
 import sys
 from time import time_ns
 from typing import IO
+from matplotlib import pyplot as plt
 import numpy as np
 # from matplotlib import pyplot as plt
 from dataclasses import dataclass
@@ -134,10 +135,6 @@ def betweenness_centralities(matrix: np.ndarray):
 
         shortest_path_counts[start_node, end_node] = path_count
         shortest_path_counts[end_node, start_node] = path_count
-
-  return shortest_path_counts
-  return shortest_path_incl
-  # print(shortest_path_counts)
 
   return (shortest_path_incl / np.maximum(shortest_path_counts, 1)).sum(axis=(1, 2))
 
@@ -430,58 +427,58 @@ def algo1(matrix: np.ndarray):
 
 
 def algo2(matrix: np.ndarray):
+  int_dtype = np.uint16
+
   n = len(matrix)
   distances = apd(matrix)
 
-  shortest_path_counts = np.zeros((n, n), dtype=int)
-  shortest_path_incl = np.zeros((n, n, n), dtype=int)
+  shortest_path_counts = np.zeros((n, n), dtype=int_dtype)
+  shortest_path_incl = np.zeros((n, n, n), dtype=int_dtype)
 
   for target_node in list(range(n)):
-    queue: dict[int, int] = {target_node: 1}
+    current_path_count = np.zeros(n, dtype=int_dtype)
+    current_path_count[target_node] = 1
 
-    current_distance_to_current_node = 0
-    path_count_to_target_node = np.zeros(n, dtype=int)
+    path_count = np.zeros(n, dtype=int_dtype)
+    path_count[target_node] = 1
 
-    distance_through_middle_node = distances[target_node, :] + distances[target_node, :, None]
-    is_node_on_path = (distance_through_middle_node == distances)
+    distances_through_target_node = distances[target_node, :] + distances[target_node, :, None]
+    is_node_on_path = (distances_through_target_node == distances)
 
-    while queue:
-      current_distance_to_current_node += 1
+    while current_path_count.any():
+      current_path_count = (current_path_count @ matrix) * (path_count < 1)
+      path_count += current_path_count
 
-      new_queue = dict[int, int]()
-      explored_nodes = (path_count_to_target_node > 0)
-      explored_nodes[target_node] = True
+    path_count[target_node] = 0
+    shortest_path_incl[target_node, :, :] = (path_count[:, None] @ path_count[None, :]) * is_node_on_path
 
-      for current_node, weight in queue.items():
-        for next_node in range(n):
-          if not matrix[current_node, next_node] or explored_nodes[next_node]:
-            continue
-
-          path_count_to_target_node[next_node] += weight
-          new_queue[next_node] = new_queue.get(next_node, 0) + weight
-
-      queue = new_queue
-
-    shortest_path_incl[target_node, :, :] = (path_count_to_target_node[:, None] @ path_count_to_target_node[None, :]) * is_node_on_path
-
-  shortest_path_counts = shortest_path_incl.sum(axis=0) // np.maximum(0, distances - 1) + matrix
+  shortest_path_counts = shortest_path_incl.sum(axis=0, dtype=int_dtype) // np.maximum(distances - 1, 1) + matrix
 
   return (shortest_path_incl / np.maximum(shortest_path_counts, 1)).sum(axis=(1, 2))
 
 
 # print(abs(betweenness_centralities(graph3.matrix) - algo2(graph3.matrix)).sum())
 
-g = graph3
+g = graph1
 
 # print(betweenness_centralities(g.matrix))
 
-it = 1000
 t1 = time_ns()
+bc = algo2(g.matrix)
+print((time_ns() - t1) * 1e-9)
 
-print(algo2(g.matrix)[s])
 
-for _ in range(it):
-  algo2(g.matrix)[s]
+fig, ax = plt.subplots()
 
-print((time_ns() - t1) / it * 1e-9)
-# print(abs(betweenness_centralities(g.matrix) - algo2(g.matrix)).sum())
+ax.hist(bc)
+
+fig.savefig('bc_reseau1.png')
+
+
+# it = 1000
+# t1 = time_ns()
+
+# for _ in range(it):
+#   algo2(g.matrix)
+
+# print((time_ns() - t1) / it * 1e-9)
