@@ -142,7 +142,7 @@ def betweenness_centralities(matrix: np.ndarray):
   return (shortest_path_incl / np.maximum(shortest_path_counts, 1)).sum(axis=(1, 2))
 
 
-graph = Graph(np.array([
+graph0 = Graph(np.array([
   [0, 1, 0, 0, 0, 0, 0, 0],
   [1, 0, 1, 0, 1, 0, 0, 0],
   [0, 1, 0, 1, 0, 0, 0, 0],
@@ -186,6 +186,39 @@ def apd(a: np.ndarray):
 
   degrees = a.sum(axis=0)
   return 2 * t - (x < t * degrees)
+
+def apd2(input_a: np.ndarray, /):
+  n = len(input_a)
+
+  mask = ~np.eye(n, dtype=bool)
+  stack = [input_a]
+
+  while (a := stack[-1]).sum() < n ** 2 - n:
+    stack.append((a | (a @ a)) & mask)
+
+  t = stack[-1]
+
+  for a in stack[-2::-1]: # Equivalent to reversed(stack[:-1])
+    x = t @ a.astype(int)
+    degrees = a.sum(axis=0)
+    t = 2 * t - (x < t * degrees)
+
+  return t
+
+
+# APD tests
+
+# t1 = time_ns()
+# x = apd(graph2.matrix)
+# t2 = time_ns()
+# y = apd2(graph2.matrix)
+# t3 = time_ns()
+
+# print('Old', (t2 - t1) * 1e-9)
+# print('New', (t3 - t2) * 1e-9)
+# print(np.allclose(x, y))
+
+# sys.exit()
 
 
 # # x = np.array([
@@ -403,53 +436,37 @@ def algo2(matrix: np.ndarray):
   shortest_path_counts = np.zeros((n, n), dtype=int)
   shortest_path_incl = np.zeros((n, n, n), dtype=int)
 
-  values = np.zeros(n, dtype=int)
-
-  # t1 = time_ns()
-
   for target_node in list(range(n)):
-  # for target_node in [0]:
-    queue: list[int] = [target_node]
-    explored_nodes = {target_node}
+    queue: dict[int, int] = {target_node: 1}
 
     current_distance_to_current_node = 0
-    paths_to = np.zeros(n, dtype=int)
+    path_count_to_target_node = np.zeros(n, dtype=int)
 
-    y = distances[target_node, :] + distances[target_node, :, None]
-    z = (y == distances).astype(int)
+    distance_through_middle_node = distances[target_node, :] + distances[target_node, :, None]
+    is_node_on_path = (distance_through_middle_node == distances)
 
     while queue:
       current_distance_to_current_node += 1
 
-      new_queue = list[int]()
-      new_explored_nodes = set[int]()
+      new_queue = dict[int, int]()
+      explored_nodes = (path_count_to_target_node > 0)
+      explored_nodes[target_node] = True
 
-      for current_node in queue:
+      for current_node, weight in queue.items():
         for next_node in range(n):
-          if not matrix[current_node, next_node]:
+          if not matrix[current_node, next_node] or explored_nodes[next_node]:
             continue
 
-          if next_node in explored_nodes:
-            continue
-
-          paths_to[next_node] += 1
-
-          new_explored_nodes.add(next_node)
-          new_queue.append(next_node)
+          path_count_to_target_node[next_node] += weight
+          new_queue[next_node] = new_queue.get(next_node, 0) + weight
 
       queue = new_queue
-      explored_nodes |= new_explored_nodes
 
-    shortest_path_incl[target_node, :, :] = (paths_to[:, None] @ paths_to[None, :]) * z
+    shortest_path_incl[target_node, :, :] = (path_count_to_target_node[:, None] @ path_count_to_target_node[None, :]) * is_node_on_path
 
   shortest_path_counts = shortest_path_incl.sum(axis=0) // np.maximum(0, distances - 1) + matrix
 
   return (shortest_path_incl / np.maximum(shortest_path_counts, 1)).sum(axis=(1, 2))
-
-  # return shortest_path_incl
-
-  # print(distances.max())
-  # print((time_ns() - t1) * 1e-9)
 
 
 # print(abs(betweenness_centralities(graph3.matrix) - algo2(graph3.matrix)).sum())
@@ -457,5 +474,14 @@ def algo2(matrix: np.ndarray):
 g = graph3
 
 # print(betweenness_centralities(g.matrix))
+
+it = 1000
+t1 = time_ns()
+
 print(algo2(g.matrix)[s])
+
+for _ in range(it):
+  algo2(g.matrix)[s]
+
+print((time_ns() - t1) / it * 1e-9)
 # print(abs(betweenness_centralities(g.matrix) - algo2(g.matrix)).sum())
