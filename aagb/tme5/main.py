@@ -85,7 +85,13 @@ class Graph:
 
 
 with Path('reseau1.txt').open() as file:
-  graph = Graph.parse(file)
+  graph1 = Graph.parse(file)
+
+with Path('reseau2.txt').open() as file:
+  graph2 = Graph.parse(file)
+
+with Path('reseau3.txt').open() as file:
+  graph3 = Graph.parse(file)
 
 
 def betweenness_centralities(matrix: np.ndarray):
@@ -129,13 +135,14 @@ def betweenness_centralities(matrix: np.ndarray):
         shortest_path_counts[start_node, end_node] = path_count
         shortest_path_counts[end_node, start_node] = path_count
 
-  # print(shortest_path_incl)
+  return shortest_path_counts
+  return shortest_path_incl
   # print(shortest_path_counts)
 
   return (shortest_path_incl / np.maximum(shortest_path_counts, 1)).sum(axis=(1, 2))
 
 
-g = Graph(np.array([
+graph = Graph(np.array([
   [0, 1, 0, 0, 0, 0, 0, 0],
   [1, 0, 1, 0, 1, 0, 0, 0],
   [0, 1, 0, 1, 0, 0, 0, 0],
@@ -146,13 +153,13 @@ g = Graph(np.array([
   [0, 0, 0, 1, 0, 0, 1, 0]
 ]).astype(bool))
 
-g = Graph(np.array([
-  [0, 1, 0, 0, 0],
-  [1, 0, 1, 0, 1],
-  [0, 1, 0, 1, 0],
-  [0, 0, 1, 0, 1],
-  [0, 1, 0, 1, 0],
-]).astype(bool))
+# g = Graph(np.array([
+#   [0, 1, 0, 0, 0],
+#   [1, 0, 1, 0, 1],
+#   [0, 1, 0, 1, 0],
+#   [0, 0, 1, 0, 1],
+#   [0, 1, 0, 1, 0],
+# ]).astype(bool))
 
 np.set_printoptions(linewidth=160, threshold=sys.maxsize, suppress=True)
 
@@ -393,91 +400,62 @@ def algo2(matrix: np.ndarray):
   n = len(matrix)
   distances = apd(matrix)
 
-  # shortest_path_counts = matrix.astype(int)
-  # shortest_path_incl = np.zeros((n, n, n), dtype=int)
+  shortest_path_counts = np.zeros((n, n), dtype=int)
+  shortest_path_incl = np.zeros((n, n, n), dtype=int)
 
   values = np.zeros(n, dtype=int)
 
   # t1 = time_ns()
 
-  for target_node in [1]:
-    queue: list[tuple[int, set[int]]] = [(target_node, set())]
+  for target_node in list(range(n)):
+  # for target_node in [0]:
+    queue: list[int] = [target_node]
     explored_nodes = {target_node}
 
-    distances_to_target_node = np.zeros(n, dtype=int)
     current_distance_to_current_node = 0
-
-    paths_going_through_target_node = np.zeros((n, n), dtype=int)
+    paths_to = np.zeros(n, dtype=int)
 
     y = distances[target_node, :] + distances[target_node, :, None]
     z = (y == distances).astype(int)
-    print(z)
 
     while queue:
       current_distance_to_current_node += 1
 
-      new_queue = list[tuple[int, set[int]]]()
+      new_queue = list[int]()
       new_explored_nodes = set[int]()
 
-      for current_node, path in queue:
+      for current_node in queue:
         for next_node in range(n):
           if not matrix[current_node, next_node]:
             continue
 
-          # if next_node == end_node:
-          #   path_count += 1
-
-          #   for middle_node in path:
-          #     shortest_path_incl[middle_node, start_node, end_node] += 1
-          #     shortest_path_incl[middle_node, end_node, start_node] += 1
-          # else:
-
           if next_node in explored_nodes:
             continue
 
-          distances_to_target_node[next_node] = current_distance_to_current_node
+          paths_to[next_node] += 1
 
           new_explored_nodes.add(next_node)
-          new_queue.append((next_node, path | {next_node}))
+          new_queue.append(next_node)
 
       queue = new_queue
       explored_nodes |= new_explored_nodes
 
-      # shortest_path_counts[start_node, end_node] = path_count
-      # shortest_path_counts[end_node, start_node] = path_count
+    shortest_path_incl[target_node, :, :] = (paths_to[:, None] @ paths_to[None, :]) * z
 
-    print(distances_to_target_node)
-    print(distances[target_node, :])
+  shortest_path_counts = shortest_path_incl.sum(axis=0) // np.maximum(0, distances - 1) + matrix
 
-    # print(z)
-    # print('^^')
-    # print(z[0, 2])
-    # print(z[3, 4])
+  return (shortest_path_incl / np.maximum(shortest_path_counts, 1)).sum(axis=(1, 2))
+
+  # return shortest_path_incl
 
   # print(distances.max())
   # print((time_ns() - t1) * 1e-9)
 
 
-g = Graph(np.array([
-  [0, 1, 0, 0, 0],
-  [1, 0, 1, 0, 1],
-  [0, 1, 0, 1, 0],
-  [0, 0, 1, 0, 1],
-  [0, 1, 0, 1, 0],
-]).astype(bool))
+# print(abs(betweenness_centralities(graph3.matrix) - algo2(graph3.matrix)).sum())
 
-# algo0(graph.matrix)
-# print('-')
-# betweenness_centralities(g.matrix)
+g = graph3
 
-# print(graph.vertex_count)
-# print(graph.edge_count)
-
-# print(apd(graph.matrix))
-
-# print(apd(graph.matrix).max())
-# print(betweenness_centralities(graph.matrix)[s])
-# print((graph.degrees == 1).sum())
-# print(graph.degrees)
-
-algo2(g.matrix)
+# print(betweenness_centralities(g.matrix))
+print(algo2(g.matrix)[s])
+# print(abs(betweenness_centralities(g.matrix) - algo2(g.matrix)).sum())
