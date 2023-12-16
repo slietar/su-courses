@@ -1,7 +1,7 @@
-equiv(sculpteur,and(personne,some(aCree,sculpture))).
-equiv(auteur,and(personne,some(aEcrit,livre))).
-equiv(editeur,and(personne,and(not(some(aEcrit,livre)),some(aEdite,livre)))).
-equiv(parent,and(personne,some(aEnfant,anything))).
+equiv(sculpteur, and(personne, some(aCree, sculpture))).
+equiv(auteur, and(personne, some(aEcrit, livre))).
+equiv(editeur, and(personne, and(not(some(aEcrit, livre)), some(aEdite, livre)))).
+equiv(parent, and(personne, some(aEnfant, anything))).
 
 cnamea(personne).
 cnamea(livre).
@@ -29,11 +29,11 @@ rname(aEcrit).
 rname(aEdite).
 rname(aEnfant).
 
-inst(michelAnge,personne).
-inst(david,sculpture).
-inst(sonnets,livre).
-inst(vinci,personne).
-inst(joconde,objet).
+inst(michelAnge, personne).
+inst(david, sculpture).
+inst(sonnets, livre).
+inst(vinci, personne).
+inst(joconde, objet).
 
 instR(michelAnge, david, aCree).
 instR(michelAnge, sonnets, aEcrit).

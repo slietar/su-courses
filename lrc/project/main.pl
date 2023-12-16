@@ -1,20 +1,42 @@
+init_Tbox([
+  (sculpteur, and(personne, some(aCree, sculpture))),
+  (auteur, and(personne, some(aEcrit, livre))),
+  (editeur, and(personne, and(not(some(aEcrit, livre)), some(aEdite, livre)))),
+  (parent, and(personne, some(aEnfant, anything)))
+]).
+
+init_Abi([
+  (michelAnge, personne),
+  (david, sculpture),
+  (sonnets, livre),
+  (vinci, personne),
+  (joconde, objet)
+]).
+
+init_Abr([
+  (michelAnge, david, aCree),
+  (michelAnge, sonnet, aEcrit),
+  (vinci, joconde, aCree)
+]).
+
+
 % Vérifient le contenu d'une Abox ou Tbox.
-% Exemples
-%   check_Ac([(michelAnge,personne), (david,sculpture), (sonnets, livre), (vinci,personne), (joconde,objet)]).
+% Exemples:
+%   check_Tbox([(sculpteur,and(personne,some(aCree,sculpture))), (auteur,and(personne,some(aEcrit,livre))), (editeur,and(personne,and(not(some(aEcrit,livre)),some(aEdite,livre)))), (parent,and(personne,some(aEnfant,anything)))]).
 %     -> true
-%   check_Ar([(michelAnge, david, aCree), (michelAnge, sonnets, aEcrit),(vinci, joconde, aCree)]).
+%   check_Abi([(michelAnge,personne), (david,sculpture), (sonnets, livre), (vinci,personne), (joconde,objet)]).
 %     -> true
-%   check_T([(sculpteur,and(personne,some(aCree,sculpture))), (auteur,and(personne,some(aEcrit,livre))), (editeur,and(personne,and(not(some(aEcrit,livre)),some(aEdite,livre)))), (parent,and(personne,some(aEnfant,anything)))]).
+%   check_Abr([(michelAnge, david, aCree), (michelAnge, sonnets, aEcrit),(vinci, joconde, aCree)]).
 %     -> true
 
-check_Ac([]).
-check_Ac([(X, Y) | A]) :- iname(X), cnamea(Y), check_Ac(A).
+check_Tbox([]).
+check_Tbox([(X, Y) | A]) :- cnamena(X), concept(Y), check_Tbox(A).
 
-check_Ar([]).
-check_Ar([(X, Y, Z) | A]) :- iname(X), iname(Y), rname(Z), check_Ar(A).
+check_Abi([]).
+check_Abi([(X, Y) | A]) :- iname(X), cnamea(Y), check_Abi(A).
 
-check_T([]).
-check_T([(X, Y) | A]) :- cnamena(X), concept(Y), check_T(A).
+check_Abr([]).
+check_Abr([(X, Y, Z) | A]) :- iname(X), iname(Y), rname(Z), check_Abr(A).
 
 
 % Teste si un objet est un concept.
@@ -108,7 +130,7 @@ traitement_Tbox([(N, A) | T], [(N, RA) | RT]) :- traitement_Tbox(T, RT), repl_eq
 
 
 % Remplace une valeur dans une expression par sa définition.
-% Arguments:
+% Paramètres:
 %   - expression sans remplacement
 %   - nom à remplacer
 %   - expression à utiliser pour remplacer
@@ -127,7 +149,7 @@ repl_def(X, _, _, X).
 
 
 % Remplace plusieurs définitions.
-% Arguments:
+% Paramètres:
 %   - expression sans remplacement
 %   - liste des noms et expressions pour le remplacement
 %   - expression avec remplacement
@@ -140,10 +162,69 @@ repl_defs(X, [(N, D) | T], RX) :- repl_def(X, N, D, Y), repl_defs(Y, T, RX).
 
 
 % Remplace les expressions complexes d'une Abox et met toutes les expressions sous forme normale négative.
-% Arguments:
+% Paramètres:
 %   - Abox des assertions de concept non traitée
 %   - Tbox
 %   - Abox des assertions de concept traitée
 
 traitement_Abox([], _, []).
 traitement_Abox([(N, A) | T], D, [(N, RA) | RT]) :- traitement_Abox(T, D, RT), repl_defs(A, D, B), nnf(B, RA).
+
+
+% Exécute la première étape de l'algorithme.
+
+premiere_etape(Tbox, Abi, Abr) :-
+  % check_Tbox(Tbox1),
+  % check_Abi(Abi1),
+  % check_Abr(Abr),
+  init_Tbox(Tbox1),
+  init_Abi(Abi1),
+  init_Abr(Abr),
+  traitement_Tbox(Tbox1, Tbox),
+  traitement_Abox(Abi1, Tbox, Abi).
+
+
+% Partage la liste d'assertions de concept de la Abox en cinq listes en fonction du type d'assertion.
+% Exemples:
+%   tri_Abox([(a, some(r1, c1))], Lie, Lpt, Li, Lu, Ls)
+%     -> Lie = [(a, some(r1, c1))], Lpt = Li = Lu = Ls = []
+%   tri_Abox([(a, some(r1, c1)), (b, all(r2, c2))], Lie, Lpt, Li, Lu, Ls)
+%     -> Lie = [(a, some(r1, c1))], Lpt = [(b, all(r2, c2))], Li = Lu = Ls = []
+
+tri_Abox([], [], [], [], [], []).
+tri_Abox([(I, some(R, C)) | Abi], [(I, some(R, C)) | Lie], Lpt, Li, Lu, Ls) :- tri_Abox(Abi, Lie, Lpt, Li, Lu, Ls), !.
+tri_Abox([(I, all(R, C)) | Abi], Lie, [(I, all(R, C)) | Lpt], Li, Lu, Ls) :- tri_Abox(Abi, Lie, Lpt, Li, Lu, Ls), !.
+tri_Abox([(I, and(C1, C2)) | Abi], Lie, Lpt, [(I, and(C1, C2)) | Li], Lu, Ls) :- tri_Abox(Abi, Lie, Lpt, Li, Lu, Ls), !.
+tri_Abox([(I, or(C1, C2)) | Abi], Lie, Lpt, Li, [(I, or(C1, C2)) | Lu], Ls) :- tri_Abox(Abi, Lie, Lpt, Li, Lu, Ls), !.
+tri_Abox([(I, X) | Abi], Lie, Lpt, Li, Lu, [(I, X) | Ls]) :- tri_Abox(Abi, Lie, Lpt, Li, Lu, Ls).
+
+
+% Transforme toutes les assertions de type 'i : ∃ R.C' en assertions 's : C' et 'i, s : R'
+% Exemples:
+%   complete_some([(a, some(r, c))], Lpt, Li, Lu, Ls, Abr)
+%     -> Ls = [(inst1, c) | _], Abr = [(a, inst1, r) | _]
+
+complete_some([], _, _, _, _, _).
+complete_some([(I, some(R, C)) | Lie], Lpt, Li, Lu, [(S, C) | Ls], [(I, S, R) | Abr]) :- complete_some(Lie, Lpt, Li, Lu, Ls, Abr), genere(S).
+
+
+% Code pour la génération de noms
+
+compteur(1).
+
+concat2([],L1,L1).
+concat2([X|Y],L1,[X|L2]) :- concat2(Y,L1,L2).
+
+genere(Nom) :- compteur(V),nombre(V,L1), concat2([105,110,115,116],L1,L2), V1 is V+1, dynamic(compteur/1), retract(compteur(V)), dynamic(compteur/1), assert(compteur(V1)), name(Nom,L2), !.
+nombre(0,[]).
+nombre(X,L1) :- R is (X mod 10), Q is ((X-R)//10), chiffre_car(R,R1), char_code(R1,R2), nombre(Q,L), concat2(L,[R2],L1).
+chiffre_car(0,'0').
+chiffre_car(1,'1').
+chiffre_car(2,'2').
+chiffre_car(3,'3').
+chiffre_car(4,'4').
+chiffre_car(5,'5').
+chiffre_car(6,'6').
+chiffre_car(7,'7').
+chiffre_car(8,'8').
+chiffre_car(9,'9').
