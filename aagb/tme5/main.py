@@ -430,7 +430,7 @@ def algo2(matrix: np.ndarray):
   int_dtype = np.uint16
 
   n = len(matrix)
-  distances = apd(matrix)
+  distances = apd2(matrix)
 
   shortest_path_counts = np.zeros((n, n), dtype=int_dtype)
   shortest_path_incl = np.zeros((n, n, n), dtype=int_dtype)
@@ -459,26 +459,25 @@ def algo2(matrix: np.ndarray):
 
 # print(abs(betweenness_centralities(graph3.matrix) - algo2(graph3.matrix)).sum())
 
-g = graph1
+g = graph3
 
 # print(betweenness_centralities(g.matrix))
 
 t1 = time_ns()
 bc = algo2(g.matrix)
+print(bc[s])
 print((time_ns() - t1) * 1e-9)
 
 
-fig, ax = plt.subplots()
-
-ax.hist(bc)
-
-fig.savefig('bc_reseau1.png')
+# fig, ax = plt.subplots()
+# ax.hist(bc)
+# fig.savefig('bc_reseau1.png')
 
 
-# it = 1000
-# t1 = time_ns()
+it = 1000
+t1 = time_ns()
 
-# for _ in range(it):
-#   algo2(g.matrix)
+for _ in range(it):
+  algo2(g.matrix)
 
-# print((time_ns() - t1) / it * 1e-9)
+print((time_ns() - t1) / it * 1e-9)
