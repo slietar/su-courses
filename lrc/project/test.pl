@@ -1,0 +1,2 @@
+processed_T(X) :- traitement_Tbox([(sculpteur,and(personne,some(aCree,sculpture))), (auteur,and(personne,some(aEcrit,livre))), (editeur,and(personne,and(not(some(aEcrit,livre)),some(aEdite,livre)))), (parent,and(personne,some(aEnfant,anything)))], X).
+processed_A(X) :- processed_T(T), traitement_Abox([(michelAnge,personne), (david,sculpture), (sonnets, livre), (vinci,personne), (joconde,objet)], T, X).
