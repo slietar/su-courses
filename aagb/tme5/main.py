@@ -1,5 +1,6 @@
 import functools
 import itertools
+import os
 import sys
 from time import time_ns
 from typing import IO
@@ -72,6 +73,13 @@ class Graph:
 
     return Graph(matrix)
 
+  @classmethod
+  def random(cls, vertex_count: int, edge_probability: float = 0.5):
+    matrix = np.random.random((vertex_count, vertex_count)) < edge_probability
+    matrix = (matrix & ~np.triu(matrix)) | np.tril(matrix).T
+    matrix[np.diag_indices(vertex_count)] = False
+    return cls(matrix)
+
 
 # for name in ['reseau1', 'reseau2', 'reseau3']:
 #   with Path(f'{name}.txt').open() as file:
@@ -136,6 +144,7 @@ def betweenness_centralities(matrix: np.ndarray):
         shortest_path_counts[start_node, end_node] = path_count
         shortest_path_counts[end_node, start_node] = path_count
 
+  print(shortest_path_counts)
   return (shortest_path_incl / np.maximum(shortest_path_counts, 1)).sum(axis=(1, 2))
 
 
@@ -191,6 +200,9 @@ def apd2(input_a: np.ndarray, /):
   stack = [input_a]
 
   while (a := stack[-1]).sum() < n ** 2 - n:
+    if len(stack) > n:
+      raise RuntimeError('Graph is not connected')
+
     stack.append((a | (a @ a)) & mask)
 
   t = stack[-1]
@@ -427,13 +439,25 @@ def algo1(matrix: np.ndarray):
 
 
 def algo2(matrix: np.ndarray):
-  int_dtype = np.uint16
-
+  int_dtype = np.uint64
   n = len(matrix)
-  distances = apd2(matrix)
 
-  shortest_path_counts = np.zeros((n, n), dtype=int_dtype)
-  shortest_path_incl = np.zeros((n, n, n), dtype=int_dtype)
+  matrix_int = matrix.astype(int_dtype)
+  distances = matrix_int.copy()
+  shortest_path_counts = matrix_int.copy()
+
+  matrix_sq = matrix_int
+  mask = ~np.eye(n, dtype=bool)
+
+  for distance in range(2, n):
+    matrix_sq = (matrix_sq @ matrix_int) * mask
+    shortest_path_counts += matrix_sq * (distances < 1)
+    distances += (distance * (matrix_sq > 0) * (distances < 1)).astype(int_dtype)
+
+    if (distances > 0).sum() >= n ** 2 - n:
+      break
+
+  result = np.zeros(n)
 
   for target_node in list(range(n)):
     current_path_count = np.zeros(n, dtype=int_dtype)
@@ -450,34 +474,91 @@ def algo2(matrix: np.ndarray):
       path_count += current_path_count
 
     path_count[target_node] = 0
-    shortest_path_incl[target_node, :, :] = (path_count[:, None] @ path_count[None, :]) * is_node_on_path
 
-  shortest_path_counts = shortest_path_incl.sum(axis=0, dtype=int_dtype) // np.maximum(distances - 1, 1) + matrix
+    shortest_path_incl = (path_count[:, None] @ path_count[None, :]) * is_node_on_path
+    result[target_node] = (shortest_path_incl / np.maximum(shortest_path_counts, 1)).sum()
 
-  return (shortest_path_incl / np.maximum(shortest_path_counts, 1)).sum(axis=(1, 2))
+  return result
 
 
 # print(abs(betweenness_centralities(graph3.matrix) - algo2(graph3.matrix)).sum())
 
-g = graph3
+g = graph1 # Graph.random(100, 0.5)
+print(algo2(g.matrix))
 
-# print(betweenness_centralities(g.matrix))
+# sys.exit()
+# # print(g.matrix.astype(int))
 
-t1 = time_ns()
-bc = algo2(g.matrix)
-print(bc[s])
-print((time_ns() - t1) * 1e-9)
+# a1 = betweenness_centralities(g.matrix)
+
+# t1 = time_ns()
+# a2 = algo2(g.matrix)
+
+# print((time_ns() - t1) * 1e-9)
+# print(np.allclose(a1, a2))
 
 
-# fig, ax = plt.subplots()
-# ax.hist(bc)
-# fig.savefig('bc_reseau1.png')
+# # fig, ax = plt.subplots()
+# # ax.hist(bc)
+# # fig.savefig('bc_reseau1.png')
+
+# print(os.getpid())
+
+# it = 2
+# t1 = time_ns()
+
+# for _ in range(it):
+#   algo2(g.matrix)
+
+# print((time_ns() - t1) / it * 1e-9)
 
 
-it = 1000
-t1 = time_ns()
+# a = np.array([
+#   [0, 1, 0, 0, 0, 0, 0, 0],
+#   [1, 0, 1, 0, 1, 0, 0, 0],
+#   [0, 1, 0, 1, 0, 0, 0, 0],
+#   [0, 0, 1, 0, 1, 1, 0, 1],
+#   [0, 1, 0, 1, 0, 0, 0, 0],
+#   [0, 0, 0, 1, 0, 0, 1, 0],
+#   [0, 0, 0, 0, 0, 1, 0, 1],
+#   [0, 0, 0, 1, 0, 0, 1, 0]
+# ]) # .astype(bool)
 
-for _ in range(it):
-  algo2(g.matrix)
+# # print(a)
+# # print()
 
-print((time_ns() - t1) / it * 1e-9)
+# n = len(a)
+# mask = ~np.eye(n, dtype=bool)
+
+# # z = (a + a @ a) * mask
+# # z = (a + a @ a) * mask
+
+# distances = a.copy()
+# count = a.copy() # np.zeros((n, n), dtype=int)
+
+# z = a
+
+# # distances = 1 * (z > 0) * (distances < 1)
+# # print(distances)
+
+# for i in range(2, 6):
+#   z = (z @ a) * mask
+#   count += z * (distances < 1)
+#   distances += i * (z > 0) * (distances < 1)
+
+# print(apd2(a.astype(bool)) - distances)
+# print(count)
+# betweenness_centralities(a.astype(bool))
+# # print(distances)
+
+# # print(z.astype(int))
+# # print(z)
+
+# # z = a.astype(int) @ a.astype(int)
+# # b = (a | (z > 0)) & ~np.eye(n, dtype=bool)
+
+# # t = apd(b)
+# # x = t @ a.astype(int)
+
+# # degrees = a.sum(axis=0)
+# # return 2 * t - (x < t * degrees)
