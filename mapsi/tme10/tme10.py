@@ -1,3 +1,7 @@
+# Antoine GRISLAIN
+# Simon LIÉTAR
+
+
 import numpy as np
 
 
