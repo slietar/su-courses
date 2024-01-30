@@ -1,3 +1,7 @@
+[submodule "lrc/project"]
+	path = lrc/project
+	url = git@gitlab.com:parakawa/lrc-projet.git
+
 [submodule "mogpl/project"]
 	path = mogpl/project
 	url = git@gitlab.com:parakawa/mogpl-projet.git
