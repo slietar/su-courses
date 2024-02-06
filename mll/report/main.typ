@@ -132,3 +132,21 @@ La vraisemblance est maximale avec le noyau gaussien sur les données de test es
 )
 
 La vraisemblance est maximale avec le noyau uniforme sur les données de test est obtenue avec $sigma = 9.83 dot.op 10^(-5)$.
+
+
+== Régression par Nadaraya-Watson
+
+#figure(
+  image("../tme1/output/9.png"),
+  caption: [Notes des bars dans Paris]
+)
+
+#figure(
+  image("../tme1/output/10.png"),
+  caption: [Erreur aux moindres carrés pour un noyau gaussien en fonction de $sigma$]
+)
+
+#figure(
+  image("../tme1/output/11.png"),
+  caption: [Erreur aux moindres carrés pour un noyau uniforme en fonction de $sigma$]
+)

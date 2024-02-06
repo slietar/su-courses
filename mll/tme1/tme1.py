@@ -1,18 +1,19 @@
 from abc import ABC, abstractmethod
 from math import floor
-from pathlib import Path
-import sys
-from typing import Callable, Optional, Sequence
+from matplotlib import colormaps
 from matplotlib.axes import Axes
 from matplotlib.rcsetup import cycler
-import numpy as np
-import matplotlib.pyplot as plt
-import matplotlib.image as mpimg
-import pickle
-import numpy as np
-import matplotlib.pyplot as plt
-from scipy.optimize import curve_fit, minimize_scalar
+from pathlib import Path
 from scipy.interpolate import interp1d
+from scipy.optimize import curve_fit, minimize_scalar
+from typing import Callable, Optional, Sequence
+import matplotlib.image as mpimg
+import matplotlib.pyplot as plt
+import matplotlib.pyplot as plt
+import numpy as np
+import numpy as np
+import pickle
+import sys
 
 
 plt.rcParams['font.family'] = 'Linux Libertine'
@@ -94,7 +95,7 @@ def kernel_gaussian(x: np.ndarray):
 
 
 class KernelDensity(Density):
-  def __init__(self, kernel: Optional[Callable[[np.ndarray], np.ndarray]], sigma: float = 0.1):
+  def __init__(self, kernel: Callable[[np.ndarray], np.ndarray], sigma: float):
     super().__init__()
 
     self.kernel = kernel
@@ -105,14 +106,28 @@ class KernelDensity(Density):
     self.x = x
 
   def predict(self, data: np.ndarray):
-    assert self.kernel is not None
     assert self.x is not None
-
     return self.kernel((data[:, None, :] - self.x[None, :, :]) / self.sigma).sum(axis=1) / (self.sigma ** self.x.shape[1]) / self.x.shape[0]
 
 
-class Nadaraya(Density):
-  pass
+class Nadaraya:
+  def __init__(self, kernel: Callable[[np.ndarray], np.ndarray], sigma: float):
+    self.kernel = kernel
+    self.sigma = sigma
+
+    self.x: Optional[np.ndarray] = None
+    self.y: Optional[np.ndarray] = None
+
+  def fit(self, x: np.ndarray, y: np.ndarray):
+    self.x = x
+    self.y = y
+
+  def predict(self, data: np.ndarray):
+    assert self.x is not None
+    assert self.y is not None
+
+    v = self.kernel((data[:, None, :] - self.x[None, :, :]) / self.sigma)
+    return (v * self.y).sum(axis=1) / v.sum(axis=1)
 
 
 def get_density2D(f,data,steps=100):
@@ -165,12 +180,26 @@ def load_poi(typepoi,fn=POI_FILENAME):
 # plt.ion()
 # Liste des POIs : furniture_store, laundry, bakery, cafe, home_goods_store, clothing_store, atm, lodging, night_club, convenience_store, restaurant, bar
 # La fonction charge la localisation des POIs dans geo_mat et leur note.
-geo_mat_bars, notes_bars = load_poi('bar')
+geo_mat_bars, notes_bars_raw = load_poi('bar')
 geo_mat_rest, notes_rest = load_poi('restaurant')
 
 first_test_index = int(0.8 * len(geo_mat_bars))
+
 geo_mat_bars_training = geo_mat_bars[:first_test_index, :]
 geo_mat_bars_test = geo_mat_bars[first_test_index:, :]
+
+
+indices_noted_bars = notes_bars_raw >= 0
+notes_bars = notes_bars_raw[indices_noted_bars]
+geo_noted_bars = geo_mat_bars[indices_noted_bars, :]
+
+noted_bars_first_test_index = int(0.8 * geo_noted_bars.shape[0])
+
+geo_noted_bars_training = geo_noted_bars[:noted_bars_first_test_index, :]
+geo_noted_bars_test = geo_noted_bars[noted_bars_first_test_index:, :]
+
+notes_bars_training = notes_bars[:noted_bars_first_test_index]
+notes_bars_test = notes_bars[noted_bars_first_test_index:]
 
 
 output_path = Path('output')
@@ -330,14 +359,6 @@ def plot7():
     (8, kernel_uniform, (0.00001, 0.1))
   ]:
     sigma_list = np.exp(np.linspace(np.log(bounds[0]), np.log(bounds[1]), 20))
-
-    # Gaussian
-    # sigma_list = np.linspace(0.0005, 0.005, 15)
-    # sigma_list = np.exp(np.linspace(np.log(0.0005), np.log(0.1), 20))
-
-    # Uniform
-    # sigma_list = np.exp(np.linspace(*np.log([0.00001, 0.1]), 20))
-
     likelihoods = np.empty((len(sigma_list), 2))
 
     for index, sigma in enumerate(sigma_list):
@@ -349,7 +370,7 @@ def plot7():
 
     f = interp1d(sigma_list, likelihoods[:, 1], kind='cubic')
     sigma_max = minimize_scalar(lambda x: -f(x), bounds=(sigma_list[0], sigma_list[-1]))
-    print('Gaussian kernel sigma with maximum likelihood:', sigma_list[likelihoods[:, 1].argmax()], sigma_max.x)
+    print('Gaussian/uniform kernel sigma with maximum likelihood:', sigma_list[likelihoods[:, 1].argmax()], sigma_max.x)
 
     fig, ax = plt.subplots()
 
@@ -368,7 +389,70 @@ def plot7():
       fig.savefig(file)
 
 
+def plot9():
+  fig, ax = plt.subplots()
+  plot_map(ax)
 
-plot5()
-plot6()
-plot7()
+  cmap = colormaps['RdYlGn']
+  norm = plt.Normalize(0, 5) # type: ignore
+
+  ax.axis('off')
+  ax.scatter(geo_noted_bars[:, 0], geo_noted_bars[:, 1], color=cmap(norm(notes_bars)), s=0.5)
+
+  fig.colorbar(plt.cm.ScalarMappable(cmap=cmap, norm=norm), ax=ax, label='Note')
+
+  with (output_path / '9.png').open('wb') as file:
+    fig.savefig(file)
+
+
+def plot10():
+  for plot_name, kernel, bounds in [
+    (10, kernel_gaussian, (0.0005, 0.1)),
+    (11, kernel_uniform, (0.0005, 0.1))
+  ]:
+    sigma_list = np.exp(np.linspace(np.log(bounds[0]), np.log(bounds[1]), 30))
+    errors = np.empty((len(sigma_list), 2))
+
+    for index, sigma in enumerate(sigma_list):
+      nadaraya = Nadaraya(kernel, sigma=sigma)
+      nadaraya.fit(geo_noted_bars_training, notes_bars_training)
+
+      pr_training = nadaraya.predict(geo_noted_bars_training)
+      pr_test = nadaraya.predict(geo_noted_bars_test)
+
+      errors[index, 0] = ((pr_training - notes_bars_training) ** 2).mean()
+      errors[index, 1] = ((pr_test - notes_bars_test) ** 2).mean()
+
+    f = interp1d(sigma_list, errors[:, 1], kind='cubic')
+    sigma_min = minimize_scalar(f, bounds=(sigma_list[0], sigma_list[-1]))
+    print('Gaussian/uniform kernel sigma with minimum error:', sigma_list[errors[:, 1].argmin()], sigma_min.x)
+
+    fig, ax = plt.subplots()
+
+    ax.plot(sigma_list, errors[:, 0], label='Entraînement')
+    ax.plot(sigma_list, errors[:, 1], label='Test')
+
+    # xs = np.linspace(sigma_list[0], sigma_list[-1], 1000)
+    # ys = f(xs)
+    # print('>', xs[ys.argmin()], ys.min())
+    # ax.plot(xs, ys, 'g')
+
+    # ax.axvline(sigma_min.x, color='silver', linestyle='--')
+    # ax.axvline(sigma_list[errors[:, 1].argmin()], color='red', linestyle='--')
+
+    ax.set_xlabel(r'$\sigma$')
+    ax.set_ylabel('Erreur par point')
+    ax.set_xscale('log')
+    ax.grid()
+
+    fig.legend()
+
+    with (output_path / f'{plot_name}.png').open('wb') as file:
+      fig.savefig(file)
+
+
+# plot9()
+# plot10()
+
+# print(((notes_bars_training.mean() - notes_bars_test) ** 2).mean())
+# print(((notes_bars_training.mean() - notes_bars_training) ** 2).mean())
