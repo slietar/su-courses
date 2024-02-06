@@ -4,10 +4,13 @@ from pathlib import Path
 import sys
 from typing import Callable, Optional
 from matplotlib.axes import Axes
+from matplotlib.rcsetup import cycler
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.image as mpimg
 import pickle
+
+from sympy import li
 
 
 plt.rcParams['font.family'] = 'Linux Libertine'
@@ -18,6 +21,15 @@ plt.rcParams['font.size'] = 11.0
 plt.rcParams['figure.dpi'] = 288
 plt.rcParams['grid.color'] = 'whitesmoke'
 plt.rcParams['axes.titlesize'] = 'medium'
+plt.rcParams['axes.prop_cycle'] = cycler(color=[
+  '#348abd',
+  '#e24a33',
+  '#988ed5',
+  '#777777',
+  '#fbc15e',
+  '#8eba42',
+  '#ffb5b8'
+])
 
 
 POI_FILENAME = "data/poi-paris.pkl"
@@ -52,11 +64,23 @@ class Histogramme(Density):
 
   def fit(self, x: np.ndarray):
     self.hist, self.edges = np.histogramdd(x, bins=self.steps, density=True)
+    # bin_volume = (self.edges[0][1] - self.edges[0][0]) * (self.edges[1][1] - self.edges[1][0])
+    # self.hist *= bin_volume
 
   def predict(self, x: np.ndarray):
     assert self.edges is not None
     assert self.hist is not None
 
+    # bin_indices = np.array(list(np.digitize(x[:, dim], self.edges[dim][1:], right=True) for dim in range(x.shape[1])))
+    # print(bin_indices.shape)
+    # print(bin_indices)
+
+    # dims = np.arange(x.shape[1])
+    # print(self.edges[0, bin_indices])
+
+    # bin_volume = (self.edges[0][1] - self.edges[0][0]) * (self.edges[1][1] - self.edges[1][0])
+    # bin_volume = np.array([self.edges[dim][bin_indices[dim] + 1] - self.edges[dim][bin_indices[dim]] for dim in range(x.shape[1])]).prod()
+    # return self.hist[*bin_indices]
     return self.hist[*(np.digitize(x[:, dim], self.edges[dim][1:], right=True) for dim in range(x.shape[1]))]
 
 
@@ -142,13 +166,9 @@ def load_poi(typepoi,fn=POI_FILENAME):
 geo_mat_bars, notes_bars = load_poi('bar')
 geo_mat_rest, notes_rest = load_poi('restaurant')
 
-
-# # Affiche la carte de Paris
-# show_img()
-
-# # Affiche les POIs
-# plt.scatter(geo_mat[:,0],geo_mat[:,1],alpha=0.8,s=3)
-# plt.show()
+first_test_index = int(0.8 * len(geo_mat_bars))
+geo_mat_bars_training = geo_mat_bars[:first_test_index, :]
+geo_mat_bars_test = geo_mat_bars[first_test_index:, :]
 
 
 output_path = Path('output')
@@ -161,12 +181,33 @@ def format_coord(value: float, pos: float):
 
   return f'{deg}° {amin:02}′'
 
-
 def plot_map(ax: Axes):
+  return ax.imshow(parismap, extent=coords, aspect=1.5, origin='upper', alpha=0.8)
+
+def plot_distrib(ax: Axes, data: np.ndarray):
+  return ax.imshow(data, extent=coords, aspect=1.5, origin='lower', alpha=0.3)
+
+
+def plot1():
+  fig, ax = plt.subplots()
+
+  ax.xaxis.set_major_formatter(format_coord)
+  ax.yaxis.set_major_formatter(format_coord)
+
   ax.imshow(parismap, extent=coords, aspect=1.5, origin='lower', alpha=0.3)
+  ax.set_xlabel('Longitude')
+  ax.set_ylabel('Latitude')
+
+  ax.scatter(geo_mat_rest[:, 0], geo_mat_rest[:, 1], alpha=0.5, label='Bars', s=2)
+  ax.scatter(geo_mat_bars[:, 0], geo_mat_bars[:, 1], alpha=0.5, label='Restaurants', s=2)
+
+  ax.legend()
+
+  with (output_path / '1.png').open('wb') as file:
+    fig.savefig(file)
 
 
-if True:
+def plot2():
   fig, axs = plt.subplots(2, 2)
 
   for bin_count, ax in zip([5, 10, 25, 50], axs.flatten()):
@@ -181,7 +222,6 @@ if True:
     xx, yy = np.meshgrid(xlin, ylin)
 
     ax.scatter(geo_mat_bars[:, 0], geo_mat_bars[:, 1], alpha=0.8, s=3)
-    # show_img(res)
     plot_map(ax)
     # plt.colorbar()
     ax.contour(xx, yy, res, 20)
@@ -192,24 +232,64 @@ if True:
     fig.savefig(file)
 
 
-if True:
+def plot3():
+  fig, ax = plt.subplots()
+  bin_count = 20
+
+  ax.axis('off')
+  ax.set_title(f'$N = {bin_count}$')
+
+  hist = Histogramme(bin_count)
+  hist.fit(geo_mat_bars)
+
+  res, xlin, ylin = get_density2D(hist, geo_mat_bars, bin_count)
+  xx, yy = np.meshgrid(xlin, ylin)
+
+  plot_map(ax)
+  ax.scatter(geo_mat_bars[:, 0], geo_mat_bars[:, 1], alpha=0.8, s=0.5)
+  im = plot_distrib(ax, res)
+  ax.contour(xx, yy, res, 20)
+
+  fig.colorbar(im)
+
+  with (output_path / '3.png').open('wb') as file:
+    fig.savefig(file)
+
+
+def plot4():
+  steps_list = np.arange(1, 30, 1)
+  likelihoods = np.empty((len(steps_list), 2))
+
+  for index, steps in enumerate(steps_list):
+    h = Histogramme(steps=steps)
+    h.fit(geo_mat_bars_training)
+
+    likelihoods[index, 0] = h.score(geo_mat_bars_training) / geo_mat_bars_training.shape[0]
+    likelihoods[index, 1] = h.score(geo_mat_bars_test) / geo_mat_bars_test.shape[0]
+
   fig, ax = plt.subplots()
 
-  ax.xaxis.set_major_formatter(format_coord)
-  ax.yaxis.set_major_formatter(format_coord)
+  ax.plot(steps_list, likelihoods[:, 0], label='Training')
+  ax.plot(steps_list, likelihoods[:, 1], label='Test')
 
-  ax.imshow(parismap, extent=coords, aspect=1.5, origin='lower', alpha=0.3)
-  ax.set_xlabel('Longitude')
-  ax.set_ylabel('Latitude')
+  ax.set_xlabel('Nombre de bins')
+  ax.set_ylabel('Vraisemblance par point')
+  ax.grid()
 
-  ax.scatter(geo_mat_rest[:, 0], geo_mat_rest[:, 1], alpha=0.5, color='r', label='Bars', s=2)
-  ax.scatter(geo_mat_bars[:, 0], geo_mat_bars[:, 1], alpha=0.5, color='b', label='Restaurants', s=2)
+  fig.legend()
 
-  ax.legend()
-
-  with (output_path / '1.png').open('wb') as file:
+  with (output_path / '4.png').open('wb') as file:
     fig.savefig(file)
-    # fig.savefig(file, bbox_inches='tight')
+
+  print('Bin count with maximum likelihood:', likelihoods[:, 1].argmax())
+
+
+plot1()
+plot2()
+plot3()
+plot4()
+
+
 
 
 # sys.exit()
@@ -223,36 +303,3 @@ if True:
 # plt.show()
 
 # sys.exit()
-
-
-# steps = 15
-# h = Histogramme(steps=steps)
-# h.fit(geo_mat_bars)
-
-# show_density(h, geo_mat_bars, steps=steps, log=False)
-# plt.show()
-
-
-# first_test_index = int(0.8 * len(geo_mat_bars))
-# geo_mat_training = geo_mat_bars[:first_test_index, :]
-# geo_mat_test = geo_mat_bars[first_test_index:, :]
-
-
-# steps_list = np.arange(1, 50, 1)
-# likelihoods = np.empty((len(steps_list), 2))
-
-# for index, steps in enumerate(steps_list):
-#   h = Histogramme(steps=steps)
-#   h.fit(geo_mat_training)
-
-#   likelihoods[index, 0] = h.score(geo_mat_training)
-#   likelihoods[index, 1] = h.score(geo_mat_test)
-
-
-# fig, ax1 = plt.subplots()
-# ax1.plot(steps_list, likelihoods[:, 0])
-
-# ax2 = ax1.twinx()
-# ax2.plot(steps_list, likelihoods[:, 1])
-
-# plt.show()

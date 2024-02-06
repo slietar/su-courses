@@ -42,7 +42,7 @@ class Density(ABC):
 
 #figure(
   image("../tme1/output/1.png"),
-  caption: [Longitude Position des bars et restaurants dans Paris]
+  caption: [Position des bars et restaurants dans Paris]
 )
 
 
@@ -73,4 +73,13 @@ class Histogramme(Density):
 #figure(
   image("../tme1/output/2.png"),
   caption: [Estimation de la densité de probabilité de bars, pour différents nombres de bins $N$]
+)
+
+
+On utilise un ensemble de test de 20 % des points et un ensemble d'entraînement avec les 80 % restants. La vraisemblance est maximale pour $N tilde.eq 10$ bins. Elle augmente lorsqu'il y a faible nombre de bins, puis diminue en raison du surentraînement.
+
+
+#figure(
+  image("../tme1/output/4.png"),
+  caption: [Vraisemblance en fonction du nombre de bins $N$]
 )
