@@ -3,11 +3,21 @@ from math import floor
 from pathlib import Path
 import sys
 from typing import Callable, Optional
-from matplotlib.ticker import Formatter
+from matplotlib.axes import Axes
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.image as mpimg
 import pickle
+
+
+plt.rcParams['font.family'] = 'Linux Libertine'
+plt.rcParams['mathtext.fontset'] = 'custom'
+plt.rcParams['mathtext.sf'] = 'Helvetica'
+plt.rcParams['figure.figsize'] = 21.0 / 2.54 - 2.0, 4.0
+plt.rcParams['font.size'] = 11.0
+plt.rcParams['figure.dpi'] = 288
+plt.rcParams['grid.color'] = 'whitesmoke'
+plt.rcParams['axes.titlesize'] = 'medium'
 
 
 POI_FILENAME = "data/poi-paris.pkl"
@@ -152,65 +162,97 @@ def format_coord(value: float, pos: float):
   return f'{deg}° {amin:02}′'
 
 
-fig, ax = plt.subplots()
-
-ax.xaxis.set_major_formatter(format_coord)
-ax.yaxis.set_major_formatter(format_coord)
-
-ax.imshow(parismap, extent=coords, aspect=1.5, origin='lower', alpha=0.3)
-ax.set_xlabel('Longitude')
-ax.set_ylabel('Latitude')
-
-ax.scatter(geo_mat_rest[:, 0], geo_mat_rest[:, 1], alpha=0.5, color='r', label='Bars', s=2)
-ax.scatter(geo_mat_bars[:, 0], geo_mat_bars[:, 1], alpha=0.5, color='b', label='Restaurants', s=2)
-
-ax.legend()
-
-with (output_path / '1.png').open('wb') as file:
-  fig.savefig(file, bbox_inches='tight', dpi=300)
+def plot_map(ax: Axes):
+  ax.imshow(parismap, extent=coords, aspect=1.5, origin='lower', alpha=0.3)
 
 
-sys.exit()
+if True:
+  fig, axs = plt.subplots(2, 2)
+
+  for bin_count, ax in zip([5, 10, 25, 50], axs.flatten()):
+    ax: Axes
+    ax.axis('off')
+    ax.set_title(f'$N = {bin_count}$')
+
+    hist = Histogramme(bin_count)
+    hist.fit(geo_mat_bars)
+
+    res, xlin, ylin = get_density2D(hist, geo_mat_bars, bin_count)
+    xx, yy = np.meshgrid(xlin, ylin)
+
+    ax.scatter(geo_mat_bars[:, 0], geo_mat_bars[:, 1], alpha=0.8, s=3)
+    # show_img(res)
+    plot_map(ax)
+    # plt.colorbar()
+    ax.contour(xx, yy, res, 20)
+
+  # fig.subplots_adjust(left=0., right=1.0)
+
+  with (output_path / '2.png').open('wb') as file:
+    fig.savefig(file)
 
 
-h = KernelDensity(kernel_uniform, sigma=0.1)
-h.fit(geo_mat_bars)
-# print(h.predict(geo_mat[:100, :]).shape)
+if True:
+  fig, ax = plt.subplots()
 
-show_density(h, geo_mat_bars, log=False)
-plt.show()
+  ax.xaxis.set_major_formatter(format_coord)
+  ax.yaxis.set_major_formatter(format_coord)
 
-sys.exit()
+  ax.imshow(parismap, extent=coords, aspect=1.5, origin='lower', alpha=0.3)
+  ax.set_xlabel('Longitude')
+  ax.set_ylabel('Latitude')
+
+  ax.scatter(geo_mat_rest[:, 0], geo_mat_rest[:, 1], alpha=0.5, color='r', label='Bars', s=2)
+  ax.scatter(geo_mat_bars[:, 0], geo_mat_bars[:, 1], alpha=0.5, color='b', label='Restaurants', s=2)
+
+  ax.legend()
+
+  with (output_path / '1.png').open('wb') as file:
+    fig.savefig(file)
+    # fig.savefig(file, bbox_inches='tight')
 
 
-steps = 15
-h = Histogramme(steps=steps)
-h.fit(geo_mat_bars[:, 0])
+# sys.exit()
 
-# show_density(h, geo_mat, steps=steps, log=False)
+
+# h = KernelDensity(kernel_uniform, sigma=0.1)
+# h.fit(geo_mat_bars)
+# # print(h.predict(geo_mat[:100, :]).shape)
+
+# show_density(h, geo_mat_bars, log=False)
+# plt.show()
+
+# sys.exit()
+
+
+# steps = 15
+# h = Histogramme(steps=steps)
+# h.fit(geo_mat_bars)
+
+# show_density(h, geo_mat_bars, steps=steps, log=False)
 # plt.show()
 
 
-first_test_index = int(0.8 * len(geo_mat_bars))
-geo_mat_training = geo_mat_bars[:first_test_index, :]
-geo_mat_test = geo_mat_bars[first_test_index:, :]
+# first_test_index = int(0.8 * len(geo_mat_bars))
+# geo_mat_training = geo_mat_bars[:first_test_index, :]
+# geo_mat_test = geo_mat_bars[first_test_index:, :]
 
 
-steps_list = np.arange(1, 50, 1)
-likelihoods = np.empty((len(steps_list), 2))
+# steps_list = np.arange(1, 50, 1)
+# likelihoods = np.empty((len(steps_list), 2))
 
-for index, steps in enumerate(steps_list):
-  h = Histogramme(steps=steps)
-  h.fit(geo_mat_training)
+# for index, steps in enumerate(steps_list):
+#   h = Histogramme(steps=steps)
+#   h.fit(geo_mat_training)
 
-  likelihoods[index, 0] = h.score(geo_mat_training)
-  likelihoods[index, 1] = h.score(geo_mat_test)
+#   likelihoods[index, 0] = h.score(geo_mat_training)
+#   likelihoods[index, 1] = h.score(geo_mat_test)
 
 
-fig, ax1 = plt.subplots()
-ax1.plot(steps_list, likelihoods[:, 0])
+# fig, ax1 = plt.subplots()
+# ax1.plot(steps_list, likelihoods[:, 0])
 
-ax2 = ax1.twinx()
-ax2.plot(steps_list, likelihoods[:, 1])
+# ax2 = ax1.twinx()
+# ax2.plot(steps_list, likelihoods[:, 1])
 
-plt.show()
+# plt.show()

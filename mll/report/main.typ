@@ -1,4 +1,15 @@
 #show raw.where(block: true): txt => rect(width: 100%, stroke: gray)[#txt]
+#set text(11pt)
+#show heading.where(level: 1): set text(size: 18pt)
+#show heading.where(level: 2): set text(size: 16pt)
+#show heading.where(level: 2): it => pad(y: 6pt, it.body)
+#show heading: set text(font: "Helvetica Now Display")
+#show raw: set text(font: "Menlo")
+
+#set page(
+  margin: (x: 72pt, y: 72pt),
+)
+
 
 
 = TME 1 – Estimation de densité
@@ -31,7 +42,7 @@ class Density(ABC):
 
 #figure(
   image("../tme1/output/1.png"),
-  caption: [Position des bars et restaurants dans Paris]
+  caption: [Longitude Position des bars et restaurants dans Paris]
 )
 
 
@@ -58,3 +69,8 @@ class Histogramme(Density):
 
     return self.hist[*(np.digitize(x[:, dim], self.edges[dim][1:], right=True) for dim in range(x.shape[1]))]
 ```
+
+#figure(
+  image("../tme1/output/2.png"),
+  caption: [Estimation de la densité de probabilité de bars, pour différents nombres de bins $N$]
+)
