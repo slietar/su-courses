@@ -2,15 +2,17 @@ from abc import ABC, abstractmethod
 from math import floor
 from pathlib import Path
 import sys
-from typing import Callable, Optional
+from typing import Callable, Optional, Sequence
 from matplotlib.axes import Axes
 from matplotlib.rcsetup import cycler
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.image as mpimg
 import pickle
-
-from sympy import li
+import numpy as np
+import matplotlib.pyplot as plt
+from scipy.optimize import curve_fit, minimize_scalar
+from scipy.interpolate import interp1d
 
 
 plt.rcParams['font.family'] = 'Linux Libertine'
@@ -85,10 +87,10 @@ class Histogramme(Density):
 
 
 def kernel_uniform(x: np.ndarray):
-  return np.where(np.any(x < 0.5, axis=-1), 1.0, 0.0)
+  return np.where(np.any(np.abs(x) <= 0.5, axis=-1), 1.0, 0.0)
 
-def kernel_gaussian(x: np.ndarray, d: int = 2):
-  return np.exp(-0.5 * (np.linalg.norm(x, axis=-1) ** 2)) / ((2 * np.pi) ** (d * 0.5))
+def kernel_gaussian(x: np.ndarray):
+  return np.exp(-0.5 * (x ** 2).sum(axis=-1)) / ((2 * np.pi) ** (x.shape[-1] * 0.5))
 
 
 class KernelDensity(Density):
@@ -106,7 +108,7 @@ class KernelDensity(Density):
     assert self.kernel is not None
     assert self.x is not None
 
-    return self.kernel((data[:, None, :] - self.x[None, :, :]) / self.sigma).sum(axis=1) / (self.sigma ** data.shape[1]) / self.x.shape[0]
+    return self.kernel((data[:, None, :] - self.x[None, :, :]) / self.sigma).sum(axis=1) / (self.sigma ** self.x.shape[1]) / self.x.shape[0]
 
 
 class Nadaraya(Density):
@@ -186,6 +188,18 @@ def plot_map(ax: Axes):
 
 def plot_distrib(ax: Axes, data: np.ndarray):
   return ax.imshow(data, extent=coords, aspect=1.5, origin='lower', alpha=0.3)
+
+def plot_density(density: Density, ax: Axes, *, bin_count: int, color_bar: bool = False):
+  res, xlin, ylin = get_density2D(density, geo_mat_bars, bin_count)
+  xx, yy = np.meshgrid(xlin, ylin)
+
+  plot_map(ax)
+  ax.scatter(geo_mat_bars[:, 0], geo_mat_bars[:, 1], alpha=0.8, s=0.5)
+  im = plot_distrib(ax, res)
+  ax.contour(xx, yy, res, 20)
+
+  if color_bar:
+    ax.figure.colorbar(im)
 
 
 def plot1():
@@ -269,7 +283,7 @@ def plot4():
 
   fig, ax = plt.subplots()
 
-  ax.plot(steps_list, likelihoods[:, 0], label='Training')
+  ax.plot(steps_list, likelihoods[:, 0], label='Entraînement')
   ax.plot(steps_list, likelihoods[:, 1], label='Test')
 
   ax.set_xlabel('Nombre de bins')
@@ -284,22 +298,77 @@ def plot4():
   print('Bin count with maximum likelihood:', likelihoods[:, 1].argmax())
 
 
-plot1()
-plot2()
-plot3()
-plot4()
+def plot5():
+  fig, ax = plt.subplots()
+  ax.axis('off')
+
+  density = KernelDensity(kernel_uniform, sigma=0.01)
+  density.fit(geo_mat_bars)
+
+  plot_density(density, ax, bin_count=10, color_bar=True)
+
+  with (output_path / '5.png').open('wb') as file:
+    fig.savefig(file)
+
+
+def plot6():
+  fig, ax = plt.subplots()
+  ax.axis('off')
+
+  density = KernelDensity(kernel_gaussian, sigma=0.01)
+  density.fit(geo_mat_bars)
+
+  plot_density(density, ax, bin_count=10, color_bar=True)
+
+  with (output_path / '6.png').open('wb') as file:
+    fig.savefig(file)
+
+
+def plot7():
+  for plot_name, kernel, bounds in [
+    (7, kernel_gaussian, (0.0005, 0.1)),
+    (8, kernel_uniform, (0.00001, 0.1))
+  ]:
+    sigma_list = np.exp(np.linspace(np.log(bounds[0]), np.log(bounds[1]), 20))
+
+    # Gaussian
+    # sigma_list = np.linspace(0.0005, 0.005, 15)
+    # sigma_list = np.exp(np.linspace(np.log(0.0005), np.log(0.1), 20))
+
+    # Uniform
+    # sigma_list = np.exp(np.linspace(*np.log([0.00001, 0.1]), 20))
+
+    likelihoods = np.empty((len(sigma_list), 2))
+
+    for index, sigma in enumerate(sigma_list):
+      h = KernelDensity(kernel, sigma=sigma)
+      h.fit(geo_mat_bars_training)
+
+      likelihoods[index, 0] = h.score(geo_mat_bars_training) / geo_mat_bars_training.shape[0]
+      likelihoods[index, 1] = h.score(geo_mat_bars_test) / geo_mat_bars_test.shape[0]
+
+    f = interp1d(sigma_list, likelihoods[:, 1], kind='cubic')
+    sigma_max = minimize_scalar(lambda x: -f(x), bounds=(sigma_list[0], sigma_list[-1]))
+    print('Gaussian kernel sigma with maximum likelihood:', sigma_list[likelihoods[:, 1].argmax()], sigma_max.x)
+
+    fig, ax = plt.subplots()
+
+    ax.plot(sigma_list, likelihoods[:, 0], label='Entraînement')
+    ax.plot(sigma_list, likelihoods[:, 1], label='Test')
+    # ax.axvline(sigma_max.x, color='silver', linestyle='--')
+
+    ax.set_xlabel(r'$\sigma$')
+    ax.set_ylabel('Vraisemblance par point')
+    ax.set_xscale('log')
+    ax.grid()
+
+    fig.legend()
+
+    with (output_path / f'{plot_name}.png').open('wb') as file:
+      fig.savefig(file)
 
 
 
-
-# sys.exit()
-
-
-# h = KernelDensity(kernel_uniform, sigma=0.1)
-# h.fit(geo_mat_bars)
-# # print(h.predict(geo_mat[:100, :]).shape)
-
-# show_density(h, geo_mat_bars, log=False)
-# plt.show()
-
-# sys.exit()
+plot5()
+plot6()
+plot7()

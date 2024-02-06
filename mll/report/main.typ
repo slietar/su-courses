@@ -83,3 +83,52 @@ On utilise un ensemble de test de 20 % des points et un ensemble d'entraînement
   image("../tme1/output/4.png"),
   caption: [Vraisemblance en fonction du nombre de bins $N$]
 )
+
+
+== Méthode à noyaux
+
+On implémente les noyaux :
+
+```python
+def kernel_uniform(x: np.ndarray):
+  return np.where(np.any(np.abs(x) <= 0.5, axis=-1), 1.0, 0.0)
+
+def kernel_gaussian(x: np.ndarray, d: int = 2):
+  return np.exp(-0.5 * (np.linalg.norm(x, axis=-1) ** 2)) / ((2 * np.pi) ** (d * 0.5))
+```
+
+Et la classe ```python KernelDensity``` :
+
+```python
+class KernelDensity(Density):
+  def __init__(self, kernel: Optional[Callable[[np.ndarray], np.ndarray]], sigma: float = 0.1):
+    super().__init__()
+
+    self.kernel = kernel
+    self.sigma = sigma
+    self.x: Optional[np.ndarray] = None
+
+  def fit(self, x: np.ndarray):
+    self.x = x
+
+  def predict(self, data: np.ndarray):
+    assert self.kernel is not None
+    assert self.x is not None
+
+    return self.kernel((data[:, None, :] - self.x[None, :, :]) / self.sigma).sum(axis=1) / (self.sigma ** self.x.shape[1]) / self.x.shape[0]
+```
+
+#figure(
+  image("../tme1/output/7.png"),
+  caption: [Vraisemblance avec le noyau gaussien en fonction de $sigma$]
+)
+
+La vraisemblance est maximale avec le noyau gaussien sur les données de test est obtenue avec $sigma = 2.02 dot.op 10^(-3)$.
+
+
+#figure(
+  image("../tme1/output/8.png"),
+  caption: [Vraisemblance avec le noyau uniforme en fonction de $sigma$]
+)
+
+La vraisemblance est maximale avec le noyau uniforme sur les données de test est obtenue avec $sigma = 9.83 dot.op 10^(-5)$.
