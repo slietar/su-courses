@@ -153,3 +153,44 @@ La vraisemblance est maximale avec le noyau uniforme sur les données de test es
 )
 
 Les ensembles de test et d'entraînement n'ayant pas la même note moyenne, ils tendent vers des valeurs différentes lorsque $sigma arrow.r oo$. On observe que cette méthode n'est pas très efficace pour estimer la note d'un bar car l'erreur minimale n'est que très légèrement inférieur à la moyenne pour l'ensemble de test.
+
+
+
+= TME 2 – Descente de gradient
+
+== Expérimentations
+
+=== Régression linéaire
+
+#figure(
+  image("../tme2/output/1.png"),
+  caption: [Coût en fonction de l'itération]
+)
+
+#figure(
+  image("../tme2/output/2.png"),
+  caption: [Données et frontière de décision]
+)
+
+#figure(
+  image("../tme2/output/3.png"),
+  caption: [Profil de la fonction coût et trajectoire de la descente de gradient]
+)
+
+
+=== Régression logistique
+
+#figure(
+  image("../tme2/output/4.png"),
+  caption: [Coût en fonction de l'itération]
+)
+
+#figure(
+  image("../tme2/output/5.png"),
+  caption: [Données et frontière de décision]
+)
+
+#figure(
+  image("../tme2/output/6.png"),
+  caption: [Profil de la fonction coût et trajectoire de la descente de gradient]
+)
