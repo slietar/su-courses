@@ -18,7 +18,7 @@ def plot_data(data,labels=None):
         plt.scatter(data[:,0],data[:,1],marker="x")
         return
     for i,l in enumerate(sorted(list(set(labels.flatten())))):
-        plt.scatter(data[labels==l,0],data[labels==l,1],c=cols[i],marker=marks[i])
+        plt.scatter(data[labels==l,0],data[labels==l,1],c=f'C{i}',marker=marks[i])
 
 def plot_frontiere(data,f,step=20):
     """ Trace un graphe de la frontiere de decision de f
