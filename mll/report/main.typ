@@ -8,6 +8,7 @@
 
 #set page(
   margin: (x: 72pt, y: 72pt),
+  numbering: "1"
 )
 
 
@@ -150,3 +151,5 @@ La vraisemblance est maximale avec le noyau uniforme sur les données de test es
   image("../tme1/output/11.png"),
   caption: [Erreur aux moindres carrés pour un noyau uniforme en fonction de $sigma$]
 )
+
+Les ensembles de test et d'entraînement n'ayant pas la même note moyenne, ils tendent vers des valeurs différentes lorsque $sigma arrow.r oo$. On observe que cette méthode n'est pas très efficace pour estimer la note d'un bar car l'erreur minimale n'est que très légèrement inférieur à la moyenne pour l'ensemble de test.

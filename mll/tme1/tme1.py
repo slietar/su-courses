@@ -6,7 +6,7 @@ from matplotlib.rcsetup import cycler
 from pathlib import Path
 from scipy.interpolate import interp1d
 from scipy.optimize import curve_fit, minimize_scalar
-from typing import Callable, Optional, Sequence
+from typing import Any, Callable, Optional, Sequence
 import matplotlib.image as mpimg
 import matplotlib.pyplot as plt
 import matplotlib.pyplot as plt
@@ -177,21 +177,27 @@ def load_poi(typepoi,fn=POI_FILENAME):
   return data,note
 
 
-# plt.ion()
+np.random.seed(42)
+
 # Liste des POIs : furniture_store, laundry, bakery, cafe, home_goods_store, clothing_store, atm, lodging, night_club, convenience_store, restaurant, bar
 # La fonction charge la localisation des POIs dans geo_mat et leur note.
-geo_mat_bars, notes_bars_raw = load_poi('bar')
+geo_bars_unpermuted, notes_bars_raw_unpermuted = load_poi('bar')
 geo_mat_rest, notes_rest = load_poi('restaurant')
 
-first_test_index = int(0.8 * len(geo_mat_bars))
+bars_permutation = np.random.permutation(geo_bars_unpermuted.shape[0])
 
-geo_mat_bars_training = geo_mat_bars[:first_test_index, :]
-geo_mat_bars_test = geo_mat_bars[first_test_index:, :]
+geo_bars = geo_bars_unpermuted[bars_permutation, :]
+notes_bars_raw = notes_bars_raw_unpermuted[bars_permutation]
+
+first_test_index = int(0.8 * len(geo_bars))
+
+geo_bars_training = geo_bars[:first_test_index, :]
+geo_bars_test = geo_bars[first_test_index:, :]
 
 
 indices_noted_bars = notes_bars_raw >= 0
 notes_bars = notes_bars_raw[indices_noted_bars]
-geo_noted_bars = geo_mat_bars[indices_noted_bars, :]
+geo_noted_bars = geo_bars[indices_noted_bars, :]
 
 noted_bars_first_test_index = int(0.8 * geo_noted_bars.shape[0])
 
@@ -219,11 +225,11 @@ def plot_distrib(ax: Axes, data: np.ndarray):
   return ax.imshow(data, extent=coords, aspect=1.5, origin='lower', alpha=0.3)
 
 def plot_density(density: Density, ax: Axes, *, bin_count: int, color_bar: bool = False):
-  res, xlin, ylin = get_density2D(density, geo_mat_bars, bin_count)
+  res, xlin, ylin = get_density2D(density, geo_bars, bin_count)
   xx, yy = np.meshgrid(xlin, ylin)
 
   plot_map(ax)
-  ax.scatter(geo_mat_bars[:, 0], geo_mat_bars[:, 1], alpha=0.8, s=0.5)
+  ax.scatter(geo_bars[:, 0], geo_bars[:, 1], alpha=0.8, s=0.5)
   im = plot_distrib(ax, res)
   ax.contour(xx, yy, res, 20)
 
@@ -241,8 +247,31 @@ def plot1():
   ax.set_xlabel('Longitude')
   ax.set_ylabel('Latitude')
 
-  ax.scatter(geo_mat_rest[:, 0], geo_mat_rest[:, 1], alpha=0.5, label='Bars', s=2)
-  ax.scatter(geo_mat_bars[:, 0], geo_mat_bars[:, 1], alpha=0.5, label='Restaurants', s=2)
+  current_color1: Optional[Any] = None
+  current_color2: Optional[Any] = None
+
+  batch_size = 100
+
+  for batch_start in range(0, max(geo_bars.shape[0], geo_mat_rest.shape[0]), batch_size):
+    sl = slice(batch_start, batch_start + batch_size)
+
+    current_color1 = ax.scatter(
+      geo_bars[sl, 0],
+      geo_bars[sl, 1],
+      color=current_color1,
+      alpha=0.5,
+      label=('Restaurants' if current_color1 is None else None),
+      s=2
+    ).get_facecolor()
+
+    current_color2 = ax.scatter(
+      geo_mat_rest[sl, 0],
+      geo_mat_rest[sl, 1],
+      color=current_color2,
+      alpha=0.5,
+      label=('Bars' if current_color2 is None else None),
+      s=2
+    ).get_facecolor()
 
   ax.legend()
 
@@ -259,12 +288,12 @@ def plot2():
     ax.set_title(f'$N = {bin_count}$')
 
     hist = Histogramme(bin_count)
-    hist.fit(geo_mat_bars)
+    hist.fit(geo_bars)
 
-    res, xlin, ylin = get_density2D(hist, geo_mat_bars, bin_count)
+    res, xlin, ylin = get_density2D(hist, geo_bars, bin_count)
     xx, yy = np.meshgrid(xlin, ylin)
 
-    ax.scatter(geo_mat_bars[:, 0], geo_mat_bars[:, 1], alpha=0.8, s=3)
+    ax.scatter(geo_bars[:, 0], geo_bars[:, 1], alpha=0.8, s=3)
     plot_map(ax)
     # plt.colorbar()
     ax.contour(xx, yy, res, 20)
@@ -283,13 +312,13 @@ def plot3():
   ax.set_title(f'$N = {bin_count}$')
 
   hist = Histogramme(bin_count)
-  hist.fit(geo_mat_bars)
+  hist.fit(geo_bars)
 
-  res, xlin, ylin = get_density2D(hist, geo_mat_bars, bin_count)
+  res, xlin, ylin = get_density2D(hist, geo_bars, bin_count)
   xx, yy = np.meshgrid(xlin, ylin)
 
   plot_map(ax)
-  ax.scatter(geo_mat_bars[:, 0], geo_mat_bars[:, 1], alpha=0.8, s=0.5)
+  ax.scatter(geo_bars[:, 0], geo_bars[:, 1], alpha=0.8, s=0.5)
   im = plot_distrib(ax, res)
   ax.contour(xx, yy, res, 20)
 
@@ -305,10 +334,10 @@ def plot4():
 
   for index, steps in enumerate(steps_list):
     h = Histogramme(steps=steps)
-    h.fit(geo_mat_bars_training)
+    h.fit(geo_bars_training)
 
-    likelihoods[index, 0] = h.score(geo_mat_bars_training) / geo_mat_bars_training.shape[0]
-    likelihoods[index, 1] = h.score(geo_mat_bars_test) / geo_mat_bars_test.shape[0]
+    likelihoods[index, 0] = h.score(geo_bars_training) / geo_bars_training.shape[0]
+    likelihoods[index, 1] = h.score(geo_bars_test) / geo_bars_test.shape[0]
 
   fig, ax = plt.subplots()
 
@@ -316,7 +345,7 @@ def plot4():
   ax.plot(steps_list, likelihoods[:, 1], label='Test')
 
   ax.set_xlabel('Nombre de bins')
-  ax.set_ylabel('Vraisemblance par point')
+  ax.set_ylabel('Vraisemblance moyenne')
   ax.grid()
 
   fig.legend()
@@ -332,7 +361,7 @@ def plot5():
   ax.axis('off')
 
   density = KernelDensity(kernel_uniform, sigma=0.01)
-  density.fit(geo_mat_bars)
+  density.fit(geo_bars)
 
   plot_density(density, ax, bin_count=10, color_bar=True)
 
@@ -345,7 +374,7 @@ def plot6():
   ax.axis('off')
 
   density = KernelDensity(kernel_gaussian, sigma=0.01)
-  density.fit(geo_mat_bars)
+  density.fit(geo_bars)
 
   plot_density(density, ax, bin_count=10, color_bar=True)
 
@@ -363,10 +392,10 @@ def plot7():
 
     for index, sigma in enumerate(sigma_list):
       h = KernelDensity(kernel, sigma=sigma)
-      h.fit(geo_mat_bars_training)
+      h.fit(geo_bars_training)
 
-      likelihoods[index, 0] = h.score(geo_mat_bars_training) / geo_mat_bars_training.shape[0]
-      likelihoods[index, 1] = h.score(geo_mat_bars_test) / geo_mat_bars_test.shape[0]
+      likelihoods[index, 0] = h.score(geo_bars_training) / geo_bars_training.shape[0]
+      likelihoods[index, 1] = h.score(geo_bars_test) / geo_bars_test.shape[0]
 
     f = interp1d(sigma_list, likelihoods[:, 1], kind='cubic')
     sigma_max = minimize_scalar(lambda x: -f(x), bounds=(sigma_list[0], sigma_list[-1]))
@@ -379,7 +408,7 @@ def plot7():
     # ax.axvline(sigma_max.x, color='silver', linestyle='--')
 
     ax.set_xlabel(r'$\sigma$')
-    ax.set_ylabel('Vraisemblance par point')
+    ax.set_ylabel('Vraisemblance moyenne')
     ax.set_xscale('log')
     ax.grid()
 
@@ -432,16 +461,8 @@ def plot10():
     ax.plot(sigma_list, errors[:, 0], label='Entraînement')
     ax.plot(sigma_list, errors[:, 1], label='Test')
 
-    # xs = np.linspace(sigma_list[0], sigma_list[-1], 1000)
-    # ys = f(xs)
-    # print('>', xs[ys.argmin()], ys.min())
-    # ax.plot(xs, ys, 'g')
-
-    # ax.axvline(sigma_min.x, color='silver', linestyle='--')
-    # ax.axvline(sigma_list[errors[:, 1].argmin()], color='red', linestyle='--')
-
     ax.set_xlabel(r'$\sigma$')
-    ax.set_ylabel('Erreur par point')
+    ax.set_ylabel('Erreur moyenne')
     ax.set_xscale('log')
     ax.grid()
 
@@ -451,6 +472,13 @@ def plot10():
       fig.savefig(file)
 
 
+plot1()
+# plot2()
+# plot3()
+# plot4()
+# plot5()
+# plot6()
+# plot7()
 # plot9()
 # plot10()
 
