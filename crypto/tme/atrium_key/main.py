@@ -1,6 +1,7 @@
 from base64 import b64encode
 import math
 import random
+import sys
 
 
 # def is_prime(a: int):
@@ -59,10 +60,18 @@ def egcd(b: int, n: int):
   return b, x0, y0
 
 
+# init = 0x00c24098688c0c7975f1f229a3457f7730af677f4164fdcbb33b77e2bc32b20d8baccd4234c22ba8266a23d20b802321b436bd324d1b38a3b1721c3377dbaf124c1a41810f39ac2bbab41d9b1367395801e41163f127f6d8c95a1c95db2c8340ede484eda076222233a4182019a522aefe2cad5736ccde02797adea95a50066ce070695304e68eac7dd3eb3e42fd4b96a3e5c94820ce0f8d037d443a032556e4c8179784958a55d681d0b7e7301a6a7657a4a88deb46cecd62a52747e66fd218fe977ff789c215a205fe1190cb7ebd1eb41ae2949136d209eb0c68acffa432c25da5b5a71cdf758c5bb2b48891b9a9ed9dcb8f01d81ae540b331b2d3bf30ee290f
+init = 0x00c24098688c0c7975f1f229a3457f7730af677f4164fdcbb33b77e2bc32b20d8baccd4234c22ba8266a23d20b802321b436bd324d1b38a3b1721c3377dbaf124c1a41810f39ac2bbab41d9b1367395801e41163f127f6d8c95a1c95db2c8340ede484eda076222233a4182019a522aefe2cad5736ccde02797adea95a50066ce070695304e68eac7dd3eb3e42fd4b96a3e5c94820ce0f8d037d443a032556e4c8179784958a55d681d0b7e7301a6a7657a4a88deb46cecd62a52747e66fd218fe977ff789000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+
+# print(init)
+# init &= (1 << 4097) - (1 << 1000)
+
+# print(init)
+
 
 # +++ATRIUM+++ in base64
 target = 0xfbef804d121433efbe00000000
-    #  a = 0x1000000000000000000000
+init += target
 
 # print(target)
 
@@ -72,10 +81,11 @@ target = 0xfbef804d121433efbe00000000
 
 
 p = 7
-q = target // p
+q = init // p
 
 q += 1 << 2000
 # print(q)
+
 
 # print(is_prime(q + 7))
 
@@ -84,11 +94,12 @@ q += 1 << 2000
 
 # print(math.lcm(p - 1, q - 1))
 
+q += 3206
 for i in range(0x10000):
   q += 1
 
   if is_prime(q):
-    # print('Prime', i)
+    print('Prime', i)
     break
 
 n = p * q
@@ -110,7 +121,18 @@ _, _, d = egcd(ln, e)
 assert (d * e) % ln == 1
 
 
-print('-----BEGIN PUBLIC KEY-----')
-print('MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8A')
-print(b64encode(b'\x30\x82\x01\x0a\x02\x82\x01\x01\x00' + n.to_bytes(256) + b'\x02\x03' + e.to_bytes(3)).decode())
-print('-----END PUBLIC KEY-----')
+# print('-----BEGIN PUBLIC KEY-----')
+# print('MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8A')
+# print(b64encode(b'\x30\x82\x01\x0a\x02\x82\x01\x01\x00' + n.to_bytes(256) + b'\x02\x03' + e.to_bytes(3)).decode())
+# print('-----END PUBLIC KEY-----')
+
+
+# print('-----BEGIN PRIVATE KEY-----')
+# print(b64encode(d.to_bytes(6000)))
+# print('-----END PRIVATE KEY-----')
+
+print('N=', n)
+print('e=', e)
+print('d=', d)
+print('p=', p)
+print('q=', q)
