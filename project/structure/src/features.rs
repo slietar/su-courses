@@ -1,5 +1,5 @@
 use std::{error::Error, fs::File, io::BufReader};
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
 
 #[derive(Debug, Deserialize)]
@@ -27,11 +27,12 @@ struct UniProtPosition {
     value: usize,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Serialize)]
 pub struct Domain {
     name: String,
     range: (usize, usize),
 }
+
 
 pub fn process_domains(path: &str) -> Result<Vec<Domain>, Box<dyn Error>> {
     let file = File::open(path)?;

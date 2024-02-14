@@ -85,8 +85,6 @@ pub fn process_coordinates(path: &str) -> Result<GenomicProtein, Box<dyn Error>>
 
     let coords: UniProtCoordinates = serde_json::from_reader(reader)?;
 
-    eprintln!("{:#?}", coords);
-
     let exons = coords.gn_coordinate.first().ok_or("No coordinates found")?.genomic_location.exon.iter().enumerate().map(|(index, raw_exon)| {
         Exon {
             index,

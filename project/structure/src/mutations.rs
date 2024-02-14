@@ -1,7 +1,7 @@
 use std::{error::Error, fs::File, io::BufReader};
 
 use serde::{Deserialize, Serialize};
-use serde_pickle::SerOptions;
+
 
 #[derive(Debug, Deserialize)]
 struct RawMutation {
@@ -19,7 +19,7 @@ struct RawMutation {
 }
 
 #[derive(Debug, Serialize)]
-struct Mutation {
+pub struct Mutation {
     effects: MutationEffects,
     neomutation: bool,
     new_nucleotide: char,
@@ -28,7 +28,7 @@ struct Mutation {
 }
 
 #[derive(Debug, Serialize)]
-struct MutationEffects {
+pub struct MutationEffects {
     AAA: bool,
     Ectopia: bool,
     MFSClassic: bool,
@@ -39,7 +39,8 @@ struct MutationEffects {
     TAA: bool,
 }
 
-pub fn process_mutations(path: &str) -> Result<(), Box<dyn Error>> {
+
+pub fn process_mutations(path: &str) -> Result<Vec<Mutation>, Box<dyn Error>> {
     let file = File::open(path)?;
     let reader = BufReader::new(file);
     let mut csv_reader = csv::Reader::from_reader(reader);
@@ -74,7 +75,5 @@ pub fn process_mutations(path: &str) -> Result<(), Box<dyn Error>> {
         mutations.push(mutation);
     }
 
-    serde_pickle::to_writer(&mut File::create("./output/mutations.pkl")?, &mutations, SerOptions::new())?;
-
-    Ok(())
+    Ok(mutations)
 }

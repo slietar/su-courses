@@ -1,5 +1,6 @@
 use std::{error::Error, fs::File, io::BufReader};
-
+use serde::Serialize;
+use serde_pickle::SerOptions;
 use pdbtbx::*;
 
 mod features;
@@ -54,16 +55,33 @@ mod mutations;
 } */
 
 
+#[derive(Debug, Serialize)]
+struct Output {
+    domains: Vec<self::features::Domain>,
+    length: usize,
+    mutations: Vec<self::mutations::Mutation>,
+}
+
+
 fn main() -> Result<(), Box<dyn Error>> {
     // process_mutations()?;
     // process_coordinates()?;
     // process_pdb()?;
 
-    // let prot = self::gn::process_coordinates("./data/coordinates.json")?;
     // eprintln!("{:#?}", prot);
 
-    self::mutations::process_mutations("./data/mutations.csv")?;
+    let prot = self::gn::process_coordinates("./data/coordinates.json")?;
+    let mutations = self::mutations::process_mutations("./data/mutations.csv")?;
     let domains = self::features::process_domains("./data/features.json")?;
+
+    let mut writer = File::create("./output/data.pkl")?;
+    let output = Output {
+        domains,
+        length: prot.sequence.len(),
+        mutations,
+    };
+
+    serde_pickle::to_writer(&mut writer, &output, SerOptions::new())?;
 
     Ok(())
 }
