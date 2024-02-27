@@ -26,7 +26,7 @@ effect_keys = list(reversed(mutations[0]['effects'].keys()))
 
 effects = np.array([tuple(len([0 for mutation in mutations if mutation['effects'][key]]) for key in effect_keys) for mutations in mutations_by_position])
 
-fig, ax = plt.subplots()
+fig, ax = plt.subplots(figsize=(20, 10))
 
 ax.imshow(effects[plot_start:plot_end, :].T, aspect='auto', interpolation='none')
 
@@ -55,4 +55,4 @@ ax1.set_xlim(ax.get_xlim())
 
 fig.subplots_adjust(top=0.7)
 
-plt.show()
+fig.savefig('output/map.png')

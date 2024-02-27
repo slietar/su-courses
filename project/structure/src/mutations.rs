@@ -16,6 +16,9 @@ struct RawMutation {
 
     #[serde(rename = "nucléotide")]
     position: usize,
+
+    #[serde(rename = "p.")]
+    residue: String,
 }
 
 #[derive(Debug, Serialize)]
@@ -23,8 +26,11 @@ pub struct Mutation {
     effects: MutationEffects,
     neomutation: bool,
     new_nucleotide: char,
+    new_residue: char,
     old_nucleotide: char,
-    position: usize,
+    old_residue: char,
+    position: usize, // Starting at 1
+    residue: usize, // Starting at 1
 }
 
 #[derive(Debug, Serialize)]
@@ -49,7 +55,9 @@ pub fn process_mutations(path: &str) -> Result<Vec<Mutation>, Box<dyn Error>> {
 
     for result in csv_reader.deserialize() {
         let raw_mutation: RawMutation = result?;
+        let raw_residue = raw_mutation.residue.trim();
         let mutation_chars = raw_mutation.mutation.chars().collect::<Vec<_>>();
+        let residue_chars = raw_residue.chars().collect::<Vec<_>>();
 
         let raw_effects = raw_mutation.effects.to_lowercase();
 
@@ -64,15 +72,20 @@ pub fn process_mutations(path: &str) -> Result<Vec<Mutation>, Box<dyn Error>> {
             TAA: raw_effects.contains("taa"),
         };
 
-        let mutation = Mutation {
-            effects,
-            neomutation: raw_mutation.neomutation.is_some(),
-            new_nucleotide: mutation_chars[mutation_chars.len() - 1],
-            old_nucleotide: mutation_chars[mutation_chars.len() - 3],
-            position: raw_mutation.position
-        };
+        if let Ok(residue) = raw_residue[1..(raw_residue.len() - 1)].parse::<usize>() {
+            let mutation = Mutation {
+                effects,
+                neomutation: raw_mutation.neomutation.is_some(),
+                new_nucleotide: mutation_chars[mutation_chars.len() - 1],
+                new_residue: residue_chars[residue_chars.len() - 1],
+                old_nucleotide: mutation_chars[mutation_chars.len() - 3],
+                old_residue: residue_chars[0],
+                position: raw_mutation.position,
+                residue,
+            };
 
-        mutations.push(mutation);
+            mutations.push(mutation);
+        }
     }
 
     Ok(mutations)
