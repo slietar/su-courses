@@ -1,13 +1,14 @@
-from pathlib import Path
 import sys
-from matplotlib.axes import Axes
-from scipy.interpolate import interp1d
+from pathlib import Path
 from typing import Callable
-import numpy as np
-import matplotlib.pyplot as plt
-from matplotlib.rcsetup import cycler
 
-from mltools import plot_data, plot_frontiere, make_grid, gen_arti
+import matplotlib.pyplot as plt
+import numpy as np
+from matplotlib.axes import Axes
+from matplotlib.rcsetup import cycler
+from scipy.interpolate import interp1d
+
+from mltools import gen_arti, make_grid, plot_data, plot_frontiere
 
 
 plt.rcParams['font.family'] = 'Linux Libertine'
@@ -27,6 +28,10 @@ plt.rcParams['axes.prop_cycle'] = cycler(color=[
   '#8eba42',
   '#ffb5b8'
 ])
+plt.rcParams['legend.framealpha'] = 1.0
+plt.rcParams['legend.loc'] = 'upper right'
+plt.rcParams['legend.fancybox'] = False
+plt.rcParams['legend.edgecolor'] = 'k'
 
 
 def mse(w: np.ndarray, x: np.ndarray, y: np.ndarray):
@@ -98,6 +103,29 @@ def check_fonctions():
   np.random.seed()
 
 
+def plot_decision(ax: Axes, w: np.ndarray, fn: Callable[[np.ndarray], np.ndarray]):
+  grid, x_grid, y_grid = make_grid(
+    xmin=-2,
+    xmax=2,
+    ymin=-2,
+    ymax=2,
+    step=100
+  )
+
+  im = ax.imshow(fn(grid).reshape(100, 100), extent=(x_grid.min(), x_grid.max(), y_grid.min(), y_grid.max()), alpha=0.6, cmap='RdBu', origin='lower') #, vmin=-0.05, vmax=0.05)
+
+  ax.axline((0.0, 0.0), slope=(-w[0] / w[1]), color='C2', label='Frontière de décision', linestyle='--')
+
+  ax.set_xlabel('$X_1$')
+  ax.set_ylabel('$X_2$')
+
+  ax.set_xlim(-2, 2)
+  ax.set_ylim(-2, 2)
+
+  # ax.get_figure().colorbar(im, ax=ax)
+  return im
+
+
 check_fonctions()
 
 output_path = Path('output')
@@ -139,7 +167,7 @@ def plot1():
 
   w, _, _ = descente_gradient(x, y, mse, mse_grad, eps=0.1, iter=200)
 
-  plot_data(x,y)
+  plot_data(ax, x,y)
   ax.axline((0.0, 0.0), slope=(-w[0] / w[1]), color='C2', label='Frontière de décision', linestyle='--')
 
   ax.set_xlabel('$X_1$')
@@ -202,29 +230,12 @@ def plot2():
 
   # Data points and decision boundary
 
-  fig, ax = plt.subplots()
-
   w, _, _ = descente_gradient(x, y, reglog, reglog_grad, eps=0.1, iter=500)
 
-  grid, x_grid, y_grid = make_grid(
-    xmin=-2,
-    xmax=2,
-    ymin=-2,
-    ymax=2,
-    step=100
-  )
+  fig, ax = plt.subplots()
 
-  im = ax.imshow(-(1.0 / (1 + np.exp(-grid @ w))).reshape(100, 100), extent=(x_grid.min(), x_grid.max(), y_grid.min(), y_grid.max()), alpha=0.6, cmap='RdBu', origin='lower')
-
-  plot_data(x,y)
-  ax.axline((0.0, 0.0), slope=(-w[0] / w[1]), color='C2', label='Frontière de décision', linestyle='--')
-
-  ax.set_xlabel('$X_1$')
-  ax.set_ylabel('$X_2$')
-
-  ax.set_xlim(-2, 2)
-  ax.set_ylim(-2, 2)
-
+  plot_data(ax, x, y)
+  im = plot_decision(ax, w, lambda v: -1.0 / (1 + np.exp(-v @ w)))
   fig.colorbar(im, ax=ax)
 
   with (output_path / '5.png').open('wb') as file:
@@ -276,38 +287,33 @@ def plot2():
 def plot3():
   np.random.seed(0)
 
-  x, y = gen_arti(data_type=1, epsilon=0.1)
-  y = y[:, 0]
+  x1, y1 = gen_arti(data_type=1, epsilon=0.1)
+  x2, y2 = gen_arti(data_type=2, epsilon=0.1)
 
-  w, ws, losses = descente_gradient(x, y, mse, mse_grad, eps=0.1, iter=1000)
+  y1 = y1[:, 0]
+  y2 = y2[:, 0]
 
-  fig, ax = plt.subplots()
+  w1, _, _ = descente_gradient(x1, y1, mse, mse_grad, eps=0.1, iter=1000)
+  w2, _, _ = descente_gradient(x2, y2, mse, mse_grad, eps=0.1, iter=1000)
 
-  plot_data(x, y)
+  fig, [ax1, ax2] = plt.subplots(1, 2, sharey=True)
 
-  grid, x_grid, y_grid = make_grid(
-    xmin=-2,
-    xmax=2,
-    ymin=-2,
-    ymax=2,
-    step=100
-  )
+  plot_data(ax1, x1, y1)
+  plot_data(ax2, x2, y2)
 
-  im = ax.imshow((grid @ w).reshape(100, 100), extent=(x_grid.min(), x_grid.max(), y_grid.min(), y_grid.max()), alpha=0.6, cmap='RdBu', origin='lower')
+  im1 = plot_decision(ax1, w1, lambda v: v @ w1)
+  im2 = plot_decision(ax2, w2, lambda v: v @ w2)
+  # ax.legend()
 
-  ax.axline((0.0, 0.0), slope=(-w[0] / w[1]), color='C2', label='Frontière de décision', linestyle='--')
+  fig.colorbar(im1, ax=[ax1, ax2])
 
-  ax.set_xlabel('$X_1$')
-  ax.set_ylabel('$X_2$')
+  with (output_path / '7.png').open('wb') as file:
+    fig.savefig(file)
 
-  ax.set_xlim(-2, 2)
-  ax.set_ylim(-2, 2)
 
-  fig.colorbar(im, ax=ax)
-
-  plt.show()
 
 
 plot1()
 plot2()
-# plot3()
+plot3()
+# plt.show()

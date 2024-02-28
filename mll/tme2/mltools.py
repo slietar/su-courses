@@ -1,10 +1,11 @@
+from matplotlib.axes import Axes
 import numpy as np
 #from mpl_toolkits.mplot3d import Axes3D
 import matplotlib.pyplot as plt
 from matplotlib import cm
 
 
-def plot_data(data,labels=None):
+def plot_data(ax: Axes, data,labels=None):
     """
     Affiche des donnees 2D
     :param data: matrice des donnees 2d
@@ -15,10 +16,10 @@ def plot_data(data,labels=None):
         labels = labels.reshape(-1)
     cols,marks = ["red", "green", "blue", "orange", "black", "cyan"],[".","+","*","o","x","^"]
     if labels is None:
-        plt.scatter(data[:,0],data[:,1],marker="x")
+        ax.scatter(data[:,0],data[:,1],marker="x")
         return
     for i,l in enumerate(sorted(list(set(labels.flatten())))):
-        plt.scatter(data[labels==l,0],data[labels==l,1],c=f'C{i}',marker=marks[i])
+        ax.scatter(data[labels==l,0],data[labels==l,1],c=f'C{i}',marker=marks[i])
 
 def plot_frontiere(data,f,step=20):
     """ Trace un graphe de la frontiere de decision de f
