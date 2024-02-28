@@ -6,6 +6,7 @@ use pdbtbx::*;
 mod features;
 mod gn;
 mod mutations;
+mod variants;
 
 
 /* fn process_pdb() -> Result<(), Box<dyn Error>> {
@@ -60,6 +61,7 @@ struct Output {
     domains: Vec<self::features::Domain>,
     length: usize,
     mutations: Vec<self::mutations::Mutation>,
+    variants: Vec<self::variants::Variant>,
 }
 
 
@@ -70,15 +72,17 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     // eprintln!("{:#?}", prot);
 
-    let prot = self::gn::process_coordinates("./data/coordinates.json")?;
-    let mutations = self::mutations::process_mutations("./data/mutations.csv")?;
     let domains = self::features::process_domains("./data/features.json")?;
+    let mutations = self::mutations::process_mutations("./data/mutations.csv")?;
+    let prot = self::gn::process_coordinates("./data/coordinates.json")?;
+    let variants = self::variants::process_variants("./data/variants.csv")?;
 
     let mut writer = File::create("./output/data.pkl")?;
     let output = Output {
         domains,
         length: prot.sequence.len(),
         mutations,
+        variants,
     };
 
     serde_pickle::to_writer(&mut writer, &output, SerOptions::new())?;
