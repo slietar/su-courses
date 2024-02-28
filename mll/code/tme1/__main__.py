@@ -1,42 +1,24 @@
+import pickle
 from abc import ABC, abstractmethod
 from math import floor
+from pathlib import Path
+from typing import Any, Callable, Optional
+
+import matplotlib.image as mpimg
+import matplotlib.pyplot as plt
+import numpy as np
 from matplotlib import colormaps
 from matplotlib.axes import Axes
 from matplotlib.rcsetup import cycler
-from pathlib import Path
 from scipy.interpolate import interp1d
-from scipy.optimize import curve_fit, minimize_scalar
-from typing import Any, Callable, Optional, Sequence
-import matplotlib.image as mpimg
-import matplotlib.pyplot as plt
-import matplotlib.pyplot as plt
-import numpy as np
-import numpy as np
-import pickle
-import sys
+from scipy.optimize import minimize_scalar
 
 
-plt.rcParams['font.family'] = 'Linux Libertine'
-plt.rcParams['mathtext.fontset'] = 'custom'
-plt.rcParams['mathtext.sf'] = 'Helvetica'
-plt.rcParams['figure.figsize'] = 21.0 / 2.54 - 2.0, 4.0
-plt.rcParams['font.size'] = 11.0
-plt.rcParams['figure.dpi'] = 288
-plt.rcParams['grid.color'] = 'whitesmoke'
-plt.rcParams['axes.titlesize'] = 'medium'
-plt.rcParams['axes.prop_cycle'] = cycler(color=[
-  '#348abd',
-  '#e24a33',
-  '#988ed5',
-  '#777777',
-  '#fbc15e',
-  '#8eba42',
-  '#ffb5b8'
-])
+from .. import config
 
 
-POI_FILENAME = "data/poi-paris.pkl"
-parismap = mpimg.imread('data/paris-48.806-2.23--48.916-2.48.jpg')
+POI_FILENAME = Path(__file__).parent / 'data/poi-paris.pkl'
+parismap = mpimg.imread(str(Path(__file__).parent / 'data/paris-48.806-2.23--48.916-2.48.jpg'))
 ## coordonnees GPS de la carte
 xmin, xmax = 2.23, 2.48  # coord_x min et max
 ymin, ymax = 48.806, 48.916  # coord_y min et max
@@ -208,7 +190,7 @@ notes_bars_training = notes_bars[:noted_bars_first_test_index]
 notes_bars_test = notes_bars[noted_bars_first_test_index:]
 
 
-output_path = Path('output')
+output_path = Path('output/tme1')
 output_path.mkdir(exist_ok=True, parents=True)
 
 
@@ -471,16 +453,16 @@ def plot10():
     with (output_path / f'{plot_name}.png').open('wb') as file:
       fig.savefig(file)
 
+  # print(((notes_bars_training.mean() - notes_bars_test) ** 2).mean())
+  # print(((notes_bars_training.mean() - notes_bars_training) ** 2).mean())
+
 
 plot1()
-# plot2()
-# plot3()
-# plot4()
-# plot5()
-# plot6()
-# plot7()
-# plot9()
-# plot10()
-
-# print(((notes_bars_training.mean() - notes_bars_test) ** 2).mean())
-# print(((notes_bars_training.mean() - notes_bars_training) ** 2).mean())
+plot2()
+plot3()
+plot4()
+plot5()
+plot6()
+plot7()
+plot9()
+plot10()

@@ -42,7 +42,7 @@ class Density(ABC):
 == Données
 
 #figure(
-  image("../tme1/output/1.png"),
+  image("../output/tme1/1.png"),
   caption: [Position des bars et restaurants dans Paris]
 )
 
@@ -72,7 +72,7 @@ class Histogramme(Density):
 ```
 
 #figure(
-  image("../tme1/output/2.png"),
+  image("../output/tme1/2.png"),
   caption: [Estimation de la densité de probabilité de bars, pour différents nombres de bins $N$]
 )
 
@@ -81,7 +81,7 @@ On utilise un ensemble de test de 20 % des points et un ensemble d'entraînement
 
 
 #figure(
-  image("../tme1/output/4.png"),
+  image("../output/tme1/4.png"),
   caption: [Vraisemblance en fonction du nombre de bins $N$]
 )
 
@@ -120,7 +120,7 @@ class KernelDensity(Density):
 ```
 
 #figure(
-  image("../tme1/output/7.png"),
+  image("../output/tme1/7.png"),
   caption: [Vraisemblance avec le noyau gaussien en fonction de $sigma$]
 )
 
@@ -128,7 +128,7 @@ La vraisemblance est maximale avec le noyau gaussien sur les données de test es
 
 
 #figure(
-  image("../tme1/output/8.png"),
+  image("../output/tme1/8.png"),
   caption: [Vraisemblance avec le noyau uniforme en fonction de $sigma$]
 )
 
@@ -138,17 +138,17 @@ La vraisemblance est maximale avec le noyau uniforme sur les données de test es
 == Régression par Nadaraya-Watson
 
 #figure(
-  image("../tme1/output/9.png"),
+  image("../output/tme1/9.png"),
   caption: [Notes des bars dans Paris]
 )
 
 #figure(
-  image("../tme1/output/10.png"),
+  image("../output/tme1/10.png"),
   caption: [Erreur aux moindres carrés pour un noyau gaussien en fonction de $sigma$]
 )
 
 #figure(
-  image("../tme1/output/11.png"),
+  image("../output/tme1/11.png"),
   caption: [Erreur aux moindres carrés pour un noyau uniforme en fonction de $sigma$]
 )
 
@@ -163,17 +163,17 @@ Les ensembles de test et d'entraînement n'ayant pas la même note moyenne, ils 
 === Régression linéaire
 
 #figure(
-  image("../tme2/output/1.png"),
+  image("../output/tme2/1.png"),
   caption: [Coût en fonction de l'itération]
 )
 
 #figure(
-  image("../tme2/output/2.png"),
+  image("../output/tme2/2.png"),
   caption: [Données et frontière de décision]
 )
 
 #figure(
-  image("../tme2/output/3.png"),
+  image("../output/tme2/3.png"),
   caption: [Profil de la fonction coût et trajectoire de la descente de gradient]
 )
 
@@ -181,16 +181,21 @@ Les ensembles de test et d'entraînement n'ayant pas la même note moyenne, ils 
 === Régression logistique
 
 #figure(
-  image("../tme2/output/4.png"),
+  image("../output/tme2/4.png"),
   caption: [Coût en fonction de l'itération]
 )
 
 #figure(
-  image("../tme2/output/5.png"),
+  image("../output/tme2/5.png"),
   caption: [Données et frontière de décision]
 )
 
 #figure(
-  image("../tme2/output/6.png"),
+  image("../output/tme2/6.png"),
+  caption: [Profil de la fonction coût et trajectoire de la descente de gradient]
+)
+
+#figure(
+  image("../output/tme2/7.png"),
   caption: [Profil de la fonction coût et trajectoire de la descente de gradient]
 )

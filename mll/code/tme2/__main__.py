@@ -1,37 +1,12 @@
-import sys
 from pathlib import Path
 from typing import Callable
 
 import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib.axes import Axes
-from matplotlib.rcsetup import cycler
-from scipy.interpolate import interp1d
 
-from mltools import gen_arti, make_grid, plot_data, plot_frontiere
-
-
-plt.rcParams['font.family'] = 'Linux Libertine'
-plt.rcParams['mathtext.fontset'] = 'custom'
-plt.rcParams['mathtext.sf'] = 'Helvetica'
-plt.rcParams['figure.figsize'] = 21.0 / 2.54 - 2.0, 4.0
-plt.rcParams['font.size'] = 11.0
-# plt.rcParams['figure.dpi'] = 288
-plt.rcParams['grid.color'] = 'whitesmoke'
-plt.rcParams['axes.titlesize'] = 'medium'
-plt.rcParams['axes.prop_cycle'] = cycler(color=[
-  '#348abd',
-  '#e24a33',
-  '#988ed5',
-  '#fbc15e',
-  '#777777',
-  '#8eba42',
-  '#ffb5b8'
-])
-plt.rcParams['legend.framealpha'] = 1.0
-plt.rcParams['legend.loc'] = 'upper right'
-plt.rcParams['legend.fancybox'] = False
-plt.rcParams['legend.edgecolor'] = 'k'
+from .. import config
+from ..mltools import gen_arti, make_grid, plot_data
 
 
 def mse(w: np.ndarray, x: np.ndarray, y: np.ndarray):
@@ -128,7 +103,7 @@ def plot_decision(ax: Axes, w: np.ndarray, fn: Callable[[np.ndarray], np.ndarray
 
 check_fonctions()
 
-output_path = Path('output')
+output_path = Path('output/tme2')
 output_path.mkdir(exist_ok=True, parents=True)
 
 def plot1():
