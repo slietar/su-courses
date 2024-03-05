@@ -63,8 +63,14 @@ pub struct Variant {
     reference_residue: char,
 }
 
+#[derive(Debug)]
+pub struct VariantData {
+    pub pathogenicity_labels: Vec<&'static str>,
+    pub variants: Vec<Variant>,
+}
 
-pub fn process_variants(path: &str) -> Result<Vec<Variant>, Box<dyn Error>> {
+
+pub fn process_variants(path: &str) -> Result<VariantData, Box<dyn Error>> {
     let amino_acids = HashMap::from([
         ("Ala", 'A'),
         ("Arg", 'R'),
@@ -134,20 +140,21 @@ pub fn process_variants(path: &str) -> Result<Vec<Variant>, Box<dyn Error>> {
 
             let clinical_effect = match raw_variant.clinical_effect {
                 Some(RawClinicalEffect::Benign)
-                    => Some(3),
+                    => Some(7),
                 Some(RawClinicalEffect::BenignLikelyBenign)
-                    => Some(2),
+                    => Some(6),
                 Some(RawClinicalEffect::LikelyBenign)
-                    => Some(1),
+                    => Some(5),
                 Some(RawClinicalEffect::Conflicting)
-                    => Some(0),
+                    => Some(4),
                 Some(RawClinicalEffect::LikelyPathogenic)
-                    => Some(-1),
+                    => Some(3),
                 Some(RawClinicalEffect::PathogenicLikelyPathogenic)
-                    => Some(-2),
+                    => Some(2),
                 Some(RawClinicalEffect::Pathogenic)
-                    => Some(-3),
-                Some(RawClinicalEffect::Uncertain) | None => Some(0),
+                    => Some(1),
+                Some(RawClinicalEffect::Uncertain) | None
+                    => Some(0),
             };
 
             variants.push(Variant {
@@ -162,5 +169,17 @@ pub fn process_variants(path: &str) -> Result<Vec<Variant>, Box<dyn Error>> {
 
     // eprintln!("{:#?}", variants);
 
-    Ok(variants)
+    Ok(VariantData {
+        pathogenicity_labels: [
+            "Uncertain significance",
+            "Pathogenic",
+            "Pathogenic/Likely pathogenic",
+            "Likely pathogenic",
+            "Conflicting interpretations of pathogenicity",
+            "Benign/Likely benign",
+            "Likely benign",
+            "Benign",
+        ].to_vec(),
+        variants,
+    })
 }

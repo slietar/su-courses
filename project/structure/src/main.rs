@@ -61,6 +61,7 @@ struct Output {
     domains: Vec<self::features::Domain>,
     length: usize,
     mutations: Vec<self::mutations::Mutation>,
+    pathogenicity_labels: Vec<&'static str>,
     protein: self::gn::GenomicProtein,
     variants: Vec<self::variants::Variant>,
 }
@@ -76,7 +77,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     let domains = self::features::process_domains("./data/features.json")?;
     let mutations = self::mutations::process_mutations("./data/mutations.csv")?;
     let protein = self::gn::process_coordinates("./data/coordinates.json")?;
-    let variants = self::variants::process_variants("./data/variants.csv")?;
+    let variant_data = self::variants::process_variants("./data/variants.csv")?;
 /*
     let mut output = String::new();
     output += "[";
@@ -96,8 +97,9 @@ fn main() -> Result<(), Box<dyn Error>> {
         domains,
         length: protein.sequence.len(), // TODO: Deprecate
         mutations,
+        pathogenicity_labels: variant_data.pathogenicity_labels,
         protein,
-        variants,
+        variants: variant_data.variants,
     };
 
     serde_pickle::to_writer(&mut writer, &output, SerOptions::new())?;

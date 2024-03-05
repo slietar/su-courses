@@ -33,14 +33,19 @@ pub struct Domain {
     pub kind: DomainKind,
 
     pub name: String,
+    pub number: usize,
     pub range: (usize, usize),
 }
 
 #[derive(Debug, Serialize)]
 #[serde(tag = "kind")]
 pub enum DomainKind {
+    #[serde(rename = "EGF")]
     EGFLike,
+
+    #[serde(rename = "EGFCB")]
     EGFLikeCalciumBinding,
+
     TB,
 }
 
@@ -53,21 +58,26 @@ pub fn process_domains(path: &str) -> Result<Vec<Domain>, Box<dyn Error>> {
     let domains = entry.features.iter()
         .filter(|feature| feature.feature_type == "Domain")
         .map(|feature| {
-            let kind = if feature.description.ends_with("; calcium-binding") {
-                DomainKind::EGFLikeCalciumBinding
-            } else if feature.description.starts_with("TB ") {
-                DomainKind::TB
+            let name = feature.description.clone();
+
+            let (kind, raw_number) = if name.ends_with("; calcium-binding") {
+                (DomainKind::EGFLikeCalciumBinding, &name["EGF-like ".len()..(name.len() - "; calcium-binding".len())])
+            } else if name.starts_with("TB ") {
+                (DomainKind::TB, &name["TB ".len()..])
             } else {
-                DomainKind::EGFLike
+                (DomainKind::EGFLike, &name["EGF-like ".len()..])
             };
 
-            Domain {
+            let number = raw_number.parse()?;
+
+            Ok(Domain {
                 kind,
-                name: feature.description.clone(),
+                name,
+                number,
                 range: (feature.location.start.value, feature.location.end.value)
-            }
+            })
         })
-        .collect::<Vec<_>>();
+        .collect::<Result<Vec<_>, Box<dyn Error>>>()?;
 
     Ok(domains)
 }
