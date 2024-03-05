@@ -61,6 +61,7 @@ struct Output {
     domains: Vec<self::features::Domain>,
     length: usize,
     mutations: Vec<self::mutations::Mutation>,
+    protein: self::gn::GenomicProtein,
     variants: Vec<self::variants::Variant>,
 }
 
@@ -74,14 +75,28 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     let domains = self::features::process_domains("./data/features.json")?;
     let mutations = self::mutations::process_mutations("./data/mutations.csv")?;
-    let prot = self::gn::process_coordinates("./data/coordinates.json")?;
+    let protein = self::gn::process_coordinates("./data/coordinates.json")?;
     let variants = self::variants::process_variants("./data/variants.csv")?;
+/*
+    let mut output = String::new();
+    output += "[";
+
+    for domain in &domains {
+        let (start, end) = &domain.range;
+        output += "'";
+        output += &String::from_iter(&protein.sequence[(start - 1)..(*end)]);
+        output += "', ";
+    }
+
+    output += "]";
+    println!("{}", output); */
 
     let mut writer = File::create("./output/data.pkl")?;
     let output = Output {
         domains,
-        length: prot.sequence.len(),
+        length: protein.sequence.len(), // TODO: Deprecate
         mutations,
+        protein,
         variants,
     };
 

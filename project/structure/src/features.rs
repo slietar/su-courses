@@ -29,8 +29,19 @@ struct UniProtPosition {
 
 #[derive(Debug, Serialize)]
 pub struct Domain {
-    name: String,
-    range: (usize, usize),
+    #[serde(flatten)]
+    pub kind: DomainKind,
+
+    pub name: String,
+    pub range: (usize, usize),
+}
+
+#[derive(Debug, Serialize)]
+#[serde(tag = "kind")]
+pub enum DomainKind {
+    EGFLike,
+    EGFLikeCalciumBinding,
+    TB,
 }
 
 
@@ -42,7 +53,16 @@ pub fn process_domains(path: &str) -> Result<Vec<Domain>, Box<dyn Error>> {
     let domains = entry.features.iter()
         .filter(|feature| feature.feature_type == "Domain")
         .map(|feature| {
+            let kind = if feature.description.ends_with("; calcium-binding") {
+                DomainKind::EGFLikeCalciumBinding
+            } else if feature.description.starts_with("TB ") {
+                DomainKind::TB
+            } else {
+                DomainKind::EGFLike
+            };
+
             Domain {
+                kind,
                 name: feature.description.clone(),
                 range: (feature.location.start.value, feature.location.end.value)
             }

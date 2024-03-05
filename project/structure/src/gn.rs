@@ -1,6 +1,6 @@
 use std::{error::Error, fs::File, io::BufReader};
 
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
 
 #[derive(Debug, Deserialize)]
@@ -42,7 +42,7 @@ struct UniProtGNPosition {
 }
 
 
-#[derive(Debug)]
+#[derive(Debug, Serialize)]
 pub struct GenomicProtein {
     cum_positions: Vec<usize>,
     pub exons: Vec<Exon>,
@@ -72,7 +72,7 @@ impl GenomicProtein {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Serialize)]
 pub struct Exon {
     pub index: usize,
     pub genomic_range: (usize, usize),
