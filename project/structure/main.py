@@ -1,18 +1,16 @@
-from pathlib import Path
 import pickle
-from pprint import pprint
-import sys
-from matplotlib import patches, pyplot as plt
-from matplotlib.collections import PatchCollection
+from pathlib import Path
 
 import numpy as np
+from matplotlib import patches
+from matplotlib import pyplot as plt
 
 with Path('output/data.pkl').open('rb') as file:
   data = pickle.load(file)
 
 domains = data['domains']
 mutations = data['mutations']
-length = 2871 # data['length']
+length = len(data['protein']['sequence'])
 
 plot_start = 0
 plot_end = length
@@ -38,6 +36,14 @@ for domain in domains:
 
   ax.add_artist(rect)
 
+# Regions of interest
+for start, end in [
+  (951, 1362),
+  (1689, 1762)
+]:
+  rect = patches.Rectangle([start, -0.5], end - start - 1, len(effect_keys) + 1, color='g', alpha=0.5, linewidth=0)
+  ax.add_artist(rect)
+
 ax1 = ax.twiny()
 ax1.set_xticks(
   labels=[domain['name'] for domain in domains],
@@ -45,11 +51,15 @@ ax1.set_xticks(
   rotation='vertical'
 )
 
+ax.set_xticks(np.arange(plot_start, plot_end, 100))
 ax.set_yticks(np.arange(len(effect_keys) + 1))
 ax.set_yticklabels([*effect_keys, 'Domains'])
 ax.set_xlim(plot_start - 0.5, plot_end - 0.5)
 ax.set_ylim(-0.5, len(effect_keys) + 1 - 0.5)
 ax.set_ylabel('Sequence')
+
+ax1.tick_params('x', top=False)
+ax.tick_params('y', left=False)
 
 ax1.set_xlim(ax.get_xlim())
 
