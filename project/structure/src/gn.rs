@@ -26,6 +26,8 @@ struct UniProtExon {
     #[serde(rename = "genomeLocation")]
     genomic_location: UniProtGNLocation,
 
+    id: String,
+
     #[serde(rename = "proteinLocation")]
     protein_location: UniProtGNLocation,
 }
@@ -42,44 +44,25 @@ struct UniProtGNPosition {
 }
 
 
-#[derive(Debug, Serialize)]
-pub struct GenomicProtein {
-    cum_positions: Vec<usize>,
+#[derive(Debug)]
+pub struct ProteinData {
     pub exons: Vec<Exon>,
     pub sequence: Vec<char>,
 }
 
-impl GenomicProtein {
-    fn new(sequence: Vec<char>, exons: Vec<Exon>) -> Self {
-        let mut cum_positions = Vec::with_capacity(exons.len());
-        let mut position = 0;
-
-        for exon in &exons {
-            cum_positions.push(position);
-            position += exon.protein_range.1 - exon.protein_range.0;
-        }
-
-        Self {
-            cum_positions,
-            exons,
-            sequence,
-        }
-    }
-
-    pub fn find_exon(&self, position: usize) -> Option<&Exon> {
-        let index = self.cum_positions.binary_search(&position).unwrap_or_else(|x| x - 1);
-        self.exons.get(index)
-    }
-}
-
 #[derive(Debug, Serialize)]
 pub struct Exon {
-    pub index: usize,
-    pub genomic_range: (usize, usize),
-    pub protein_range: (usize, usize),
+    pub name: String,
+    pub number: usize,
+
+    pub genomic_start_position: usize,
+    pub genomic_end_position: usize,
+
+    pub protein_start_position: usize,
+    pub protein_end_position: usize,
 }
 
-pub fn process_coordinates(path: &str) -> Result<GenomicProtein, Box<dyn Error>> {
+pub fn process_coordinates(path: &str) -> Result<ProteinData, Box<dyn Error>> {
     let file = File::open(path)?;
     let reader = BufReader::new(file);
 
@@ -87,17 +70,19 @@ pub fn process_coordinates(path: &str) -> Result<GenomicProtein, Box<dyn Error>>
 
     let exons = coords.gn_coordinate.first().ok_or("No coordinates found")?.genomic_location.exon.iter().enumerate().map(|(index, raw_exon)| {
         Exon {
-            index,
-            genomic_range: (
-                raw_exon.genomic_location.begin.position - 1,
-                raw_exon.genomic_location.end.position - 1
-            ),
-            protein_range: (
-                raw_exon.protein_location.begin.position - 1,
-                raw_exon.protein_location.end.position - 1
-            )
+            name: raw_exon.id.clone(),
+            number: (index + 1),
+
+            genomic_start_position: raw_exon.genomic_location.begin.position,
+            genomic_end_position: raw_exon.genomic_location.end.position,
+
+            protein_start_position: raw_exon.protein_location.begin.position,
+            protein_end_position: raw_exon.protein_location.end.position,
         }
     }).collect::<Vec<_>>();
 
-    Ok(GenomicProtein::new(coords.sequence.chars().collect(), exons))
+    Ok(ProteinData {
+        exons,
+        sequence: coords.sequence.chars().collect(),
+    })
 }

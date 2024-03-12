@@ -34,7 +34,9 @@ pub struct Domain {
 
     pub name: String,
     pub number: usize,
-    pub range: (usize, usize),
+
+    pub start_position: usize,
+    pub end_position: usize,
 }
 
 #[derive(Debug, Serialize)]
@@ -72,9 +74,12 @@ pub fn process_domains(path: &str) -> Result<Vec<Domain>, Box<dyn Error>> {
 
             Ok(Domain {
                 kind,
+
                 name,
                 number,
-                range: (feature.location.start.value, feature.location.end.value)
+
+                start_position: feature.location.start.value,
+                end_position: feature.location.end.value,
             })
         })
         .collect::<Result<Vec<_>, Box<dyn Error>>>()?;

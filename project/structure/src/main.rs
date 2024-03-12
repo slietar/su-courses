@@ -1,7 +1,7 @@
-use std::{error::Error, fs::File, io::BufReader};
+use std::{error::Error, fs::File};
 use serde::Serialize;
 use serde_pickle::SerOptions;
-use pdbtbx::*;
+// use pdbtbx::*;
 
 mod features;
 mod gn;
@@ -59,25 +59,21 @@ mod variants;
 #[derive(Debug, Serialize)]
 struct Output {
     domains: Vec<self::features::Domain>,
-    length: usize,
+    effect_labels: &'static [&'static str],
+    exons: Vec<self::gn::Exon>,
     mutations: Vec<self::mutations::Mutation>,
     pathogenicity_labels: Vec<&'static str>,
-    protein: self::gn::GenomicProtein,
+    sequence: Vec<char>,
     variants: Vec<self::variants::Variant>,
 }
 
 
 fn main() -> Result<(), Box<dyn Error>> {
-    // process_mutations()?;
-    // process_coordinates()?;
-    // process_pdb()?;
-
-    // eprintln!("{:#?}", prot);
-
     let domains = self::features::process_domains("./data/features.json")?;
     let mutations = self::mutations::process_mutations("./data/mutations.csv")?;
-    let protein = self::gn::process_coordinates("./data/coordinates.json")?;
+    let protein_data = self::gn::process_coordinates("./data/coordinates.json")?;
     let variant_data = self::variants::process_variants("./data/variants.csv")?;
+
 /*
     let mut output = String::new();
     output += "[";
@@ -95,10 +91,11 @@ fn main() -> Result<(), Box<dyn Error>> {
     let mut writer = File::create("./output/data.pkl")?;
     let output = Output {
         domains,
-        length: protein.sequence.len(), // TODO: Deprecate
+        effect_labels: self::mutations::EFFECT_LABELS,
+        exons: protein_data.exons,
         mutations,
         pathogenicity_labels: variant_data.pathogenicity_labels,
-        protein,
+        sequence: protein_data.sequence,
         variants: variant_data.variants,
     };
 

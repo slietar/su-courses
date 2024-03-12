@@ -5,24 +5,26 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Deserialize)]
 struct RawVariant {
-    // #[serde(rename = "Position")]
-    // genome_position: usize,
+    #[serde(flatten)]
+    clinical_effect: Option<RawClinicalEffect>,
+
+    #[serde(rename = "Position")]
+    absolute_genomic_position: usize,
 
     #[serde(rename = "Allele Frequency")]
     frequency: f32,
 
+    #[serde(rename = "gnomAD ID")]
+    name: String,
+
     #[serde(rename = "Protein Consequence")]
     protein_effect: Option<String>,
 
-    // #[serde(flatten, rename = "ClinVar Clinical Significance")]
-    #[serde(flatten)]
-    clinical_effect: Option<RawClinicalEffect>,
+    #[serde(rename = "Reference")]
+    reference_nucleotides: String,
 
-    // #[serde(rename = "Reference")]
-    // reference: String,
-
-    // #[serde(rename = "Alternate")]
-    // alternate: String,
+    #[serde(rename = "Alternate")]
+    alternate_nucleotides: String,
 }
 
 #[derive(Debug, Deserialize)]
@@ -56,11 +58,17 @@ enum RawClinicalEffect {
 
 #[derive(Debug, Serialize)]
 pub struct Variant {
-    alternate_residue: Option<char>,
-    clinical_effect: Option<isize>,
     frequency: f32,
-    protein_position: usize,
-    reference_residue: char,
+    genomic_position: usize,
+    name: String,
+    pathogenicity: Option<usize>,
+    position: usize,
+
+    reference_aa: char,
+    alternate_aa: Option<char>,
+
+    reference_nucleotides: String,
+    alternate_nucleotides: String,
 }
 
 #[derive(Debug)]
@@ -71,28 +79,17 @@ pub struct VariantData {
 
 
 pub fn process_variants(path: &str) -> Result<VariantData, Box<dyn Error>> {
-    let amino_acids = HashMap::from([
-        ("Ala", 'A'),
-        ("Arg", 'R'),
-        ("Asn", 'N'),
-        ("Asp", 'D'),
-        ("Cys", 'C'),
-        ("Gln", 'Q'),
-        ("Glu", 'E'),
-        ("Gly", 'G'),
-        ("His", 'H'),
-        ("Ile", 'I'),
-        ("Leu", 'L'),
-        ("Lys", 'K'),
-        ("Met", 'M'),
-        ("Phe", 'F'),
-        ("Pro", 'P'),
-        ("Ser", 'S'),
-        ("Thr", 'T'),
-        ("Trp", 'W'),
-        ("Tyr", 'Y'),
-        ("Val", 'V'),
-    ]);
+    // let mut buf = String::new();
+    // file.read_to_string(&mut buf)?;
+    // let file = serde_json::from_str(&buf);
+    let aa_long_to_short_map = {
+        let file = File::open("../resources/amino_acid_map.json")?;
+        let aa_short_to_long_map: HashMap<char, String> = serde_json::from_reader(file)?;
+
+        aa_short_to_long_map.iter()
+            .map(|(k, v)| (v.clone(), *k))
+            .collect::<HashMap<String, char>>()
+    };
 
     let file = File::open(path)?;
     let reader = BufReader::new(file);
@@ -108,10 +105,10 @@ pub fn process_variants(path: &str) -> Result<VariantData, Box<dyn Error>> {
             // chars.slice(0, 3)
 
             let reference_long = &protein_effect[2..5];
-            let reference_short = amino_acids.get(reference_long);
+            let reference_short = aa_long_to_short_map.get(reference_long);
 
             let alternate_long = &protein_effect[(protein_effect.len() - 3)..];
-            let alternate_short = amino_acids.get(alternate_long);
+            let alternate_short = aa_long_to_short_map.get(alternate_long);
 
             let opt_protein_position: Option<usize> = protein_effect[5..(protein_effect.len() - 3)].parse().ok();
 
@@ -138,7 +135,7 @@ pub fn process_variants(path: &str) -> Result<VariantData, Box<dyn Error>> {
             //     }
             // }
 
-            let clinical_effect = match raw_variant.clinical_effect {
+            let pathogenicity = match raw_variant.clinical_effect {
                 Some(RawClinicalEffect::Benign)
                     => Some(7),
                 Some(RawClinicalEffect::BenignLikelyBenign)
@@ -158,11 +155,15 @@ pub fn process_variants(path: &str) -> Result<VariantData, Box<dyn Error>> {
             };
 
             variants.push(Variant {
-                alternate_residue,
-                clinical_effect,
+                alternate_aa: alternate_residue,
+                alternate_nucleotides: raw_variant.alternate_nucleotides,
                 frequency: raw_variant.frequency,
-                protein_position,
-                reference_residue,
+                genomic_position: raw_variant.absolute_genomic_position - 48410990 + 8613,
+                name: raw_variant.name,
+                pathogenicity,
+                position: protein_position,
+                reference_aa: reference_residue,
+                reference_nucleotides: raw_variant.reference_nucleotides,
             });
         }
     }
