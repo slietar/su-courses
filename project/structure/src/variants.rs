@@ -2,6 +2,11 @@ use std::{collections::HashMap, error::Error, fs::File, io::BufReader};
 
 use serde::{Deserialize, Serialize};
 
+#[derive(Debug, Deserialize)]
+struct AminoAcid {
+    code: String,
+    letter: char,
+}
 
 #[derive(Debug, Deserialize)]
 struct RawVariant {
@@ -79,16 +84,14 @@ pub struct VariantData {
 
 
 pub fn process_variants(path: &str) -> Result<VariantData, Box<dyn Error>> {
-    // let mut buf = String::new();
-    // file.read_to_string(&mut buf)?;
-    // let file = serde_json::from_str(&buf);
     let aa_long_to_short_map = {
-        let file = File::open("../resources/amino_acid_map.json")?;
-        let aa_short_to_long_map: HashMap<char, String> = serde_json::from_reader(file)?;
+        let file = File::open("../resources/amino_acids.json")?;
+        let aas: Vec<AminoAcid> = serde_json::from_reader(file)?;
 
-        aa_short_to_long_map.iter()
-            .map(|(k, v)| (v.clone(), *k))
-            .collect::<HashMap<String, char>>()
+        aas
+            .iter()
+            .map(|aa| (aa.code.clone(), aa.letter))
+            .collect::<HashMap<_, _>>()
     };
 
     let file = File::open(path)?;

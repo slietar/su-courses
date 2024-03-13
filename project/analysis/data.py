@@ -3,8 +3,10 @@ from pathlib import Path
 
 import pandas as pd
 
+from . import shared
 
-with (Path(__file__).parent / '../structure/output/data.pkl').open('rb') as file:
+
+with (shared.root_path / 'structure/output/data.pkl').open('rb') as file:
   pkl_data = pickle.load(file)
 
 
@@ -16,10 +18,13 @@ pathogenicity_labels = pkl_data['pathogenicity_labels']
 sequence = pkl_data['sequence']
 variants = pd.DataFrame.from_records(pkl_data['variants'], index='name')
 
-all_mutations = pd.concat((
+all_mutations = pd.concat([
   mutations.assign(source='hospital', pathogenicity=1),
   variants.assign(source='gnomad')
-), join='inner')
+], join='inner')
+
+gemme_threshold = -0.779
+protein_length = len(sequence)
 
 
 if __name__ == '__main__':
@@ -33,3 +38,17 @@ if __name__ == '__main__':
     print(df.head())
     print()
     print()
+
+
+__all__ = [
+  'all_mutations',
+  'domains',
+  'effect_labels',
+  'exons',
+  'gemme_threshold',
+  'mutations',
+  'pathogenicity_labels',
+  'protein_length',
+  'sequence',
+  'variants'
+]

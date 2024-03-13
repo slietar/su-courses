@@ -1,0 +1,22 @@
+[
+  { "letter": "A", "code": "Ala" },
+  { "letter": "R", "code": "Arg" },
+  { "letter": "N", "code": "Asn" },
+  { "letter": "D", "code": "Asp" },
+  { "letter": "C", "code": "Cys" },
+  { "letter": "Q", "code": "Gln" },
+  { "letter": "E", "code": "Glu" },
+  { "letter": "G", "code": "Gly" },
+  { "letter": "H", "code": "His" },
+  { "letter": "I", "code": "Ile" },
+  { "letter": "L", "code": "Leu" },
+  { "letter": "K", "code": "Lys" },
+  { "letter": "M", "code": "Met" },
+  { "letter": "F", "code": "Phe" },
+  { "letter": "P", "code": "Pro" },
+  { "letter": "S", "code": "Ser" },
+  { "letter": "T", "code": "Thr" },
+  { "letter": "W", "code": "Trp" },
+  { "letter": "Y", "code": "Tyr" },
+  { "letter": "V", "code": "Val" }
+]
