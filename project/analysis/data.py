@@ -10,6 +10,7 @@ with (shared.root_path / 'structure/output/data.pkl').open('rb') as file:
   pkl_data = pickle.load(file)
 
 
+domain_kinds = pkl_data['domain_kinds']
 domains = pd.DataFrame.from_records(pkl_data['domains'], index='name')
 effect_labels = pkl_data['effect_labels']
 exons = pd.DataFrame.from_records(pkl_data['exons'], index='name')
@@ -45,6 +46,7 @@ if __name__ == '__main__':
 
 __all__ = [
   'all_mutations',
+  'domain_kinds',
   'domains',
   'effect_labels',
   'exons',

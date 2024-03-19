@@ -4,7 +4,7 @@ from matplotlib.axes import Axes
 import numpy as np
 import pandas as pd
 
-from .. import data
+from .. import data, shared
 from ..esmfold import plddt as plddt_esmfold_contextualized
 
 
@@ -50,6 +50,5 @@ ax.set_ylim(0, 3)
 fig.subplots_adjust(left=0.15)
 fig.colorbar(im, ax=ax)
 
-fig.savefig('output/plddt.png')
-
-plt.show()
+with (shared.output_path / 'plddt.png').open('wb') as file:
+  fig.savefig(file, dpi=300)

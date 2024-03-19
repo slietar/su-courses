@@ -52,6 +52,13 @@ pub enum DomainKind {
 }
 
 
+pub const DOMAIN_KINDS: &'static [&str; 3] = &[
+    "EGF",
+    "EGFCB",
+    "TB",
+];
+
+
 pub fn process_domains(path: &str) -> Result<Vec<Domain>, Box<dyn Error>> {
     let file = File::open(path)?;
     let reader = BufReader::new(file);

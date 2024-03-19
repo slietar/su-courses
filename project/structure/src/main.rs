@@ -11,6 +11,7 @@ mod variants;
 
 #[derive(Debug, Serialize)]
 struct Output {
+    domain_kinds: &'static [&'static str],
     domains: Vec<self::features::Domain>,
     effect_labels: &'static [&'static str],
     exons: Vec<self::gn::Exon>,
@@ -45,6 +46,7 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     let mut writer = File::create("./output/data.pkl")?;
     let output = Output {
+        domain_kinds: self::features::DOMAIN_KINDS,
         domains,
         effect_labels: self::mutations::EFFECT_LABELS,
         exons: protein_data.exons,

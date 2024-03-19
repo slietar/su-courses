@@ -7,7 +7,7 @@ import pandas as pd
 from . import data, shared
 
 
-with (shared.root_path / 'esmfold-output/mixed/metadata.pkl').open('rb') as f:
+with (shared.root_path / 'esmfold-output/contextualized/metadata.pkl').open('rb') as f:
   metadata = pickle.load(f)
 
 # x = pd.DataFrame.from_records(metadata)
