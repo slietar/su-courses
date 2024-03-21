@@ -69,7 +69,6 @@ def check_fonctions():
   ## On fixe la seed de l'aléatoire pour vérifier les fonctions
   np.random.seed(0)
   datax, datay = gen_arti(epsilon=0.1)
-  datay = datay[:, 0]
   wrandom = np.random.randn(datax.shape[1])
   assert(np.isclose(mse(wrandom,datax,datay).mean(),0.54731,rtol=1e-4))
   assert(np.isclose(reglog(wrandom,datax,datay).mean(), 0.57053,rtol=1e-4))
@@ -112,7 +111,6 @@ def plot1():
   # Shape: x (1000, 2)
   #        y (1000, 1)
   x, y = gen_arti(epsilon=0.1)
-  y = y[:, 0]
 
 
   # Loss as a function of the epoch
@@ -181,7 +179,6 @@ def plot2():
   np.random.seed(0)
 
   x, y = gen_arti(epsilon=0.1)
-  y = y[:, 0]
 
 
   # Loss as a function of the epoch
@@ -264,9 +261,6 @@ def plot3():
 
   x1, y1 = gen_arti(data_type=1, epsilon=0.1)
   x2, y2 = gen_arti(data_type=2, epsilon=0.1)
-
-  y1 = y1[:, 0]
-  y2 = y2[:, 0]
 
   w1, _, _ = descente_gradient(x1, y1, mse, mse_grad, eps=0.1, iter=1000)
   w2, _, _ = descente_gradient(x2, y2, mse, mse_grad, eps=0.1, iter=1000)

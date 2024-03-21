@@ -1,6 +1,8 @@
+import math
 from pathlib import Path
 from typing import Callable, Optional
 
+from matplotlib.axes import Axes
 import numpy as np
 from matplotlib import pyplot as plt
 
@@ -29,19 +31,44 @@ class Lineaire:
     self.loss = loss
     self.loss_g = loss_g
 
-  def fit(self, x: np.ndarray, y: np.ndarray, test_x: Optional[np.ndarray] = None, test_y: Optional[np.ndarray] = None):
+  def fit(self, x: np.ndarray, y: np.ndarray, test_x: Optional[np.ndarray] = None, test_y: Optional[np.ndarray] = None, *, batch_size: Optional[int] = None):
+    batch_size_ = batch_size if batch_size is not None else len(y)
+
     scores = np.zeros((self.max_iter + 1, 2))
-    self.w = np.zeros(x.shape[1])
+    # self.w = np.zeros(x.shape[1])
+    self.w = np.random.uniform(-1.0, 1.0, x.shape[1])
     # print(self.loss(w, x, y))
 
     it = 0
     scores[0, 0] = self.score(x, y)
 
+    # batches_x = np.array_split(x, batch_count)
+    # batches_y = np.array_split(y, batch_count)
+
+    split = np.arange(batch_size_, len(y), batch_size_)
+
     if (test_x is not None) and (test_y is not None):
       scores[0, 1] = self.score(test_x, test_y)
 
     for it in range(self.max_iter):
-      self.w -= self.eps * self.loss_g(self.w, x, y)
+      random_indices = np.random.permutation(len(y))
+      batches_x = np.split(x[random_indices, :], split)
+      batches_y = np.split(y[random_indices], split)
+
+      # batches_x = batches_x[:1]
+      # batches_y = batches_y[:1]
+
+      # Remove the last batch because it has a lower size
+      if len(batches_y) > 1:
+        batches_x = batches_x[:-1]
+        batches_y = batches_y[:-1]
+
+      # batches_x = [x]
+      # batches_y = [y]
+
+      batches_grad = np.array([self.loss_g(self.w, batch_x, batch_y) for batch_x, batch_y in zip(batches_x, batches_y)])
+      self.w -= self.eps * batches_grad.mean(axis=0)
+
       # print(self.loss(w, x, y))
       # print(self.loss(w, x, y), w, self.loss_g(w, x, y))
       # print(y * np.dot(x, w))
@@ -77,7 +104,7 @@ def get_usps(l,datax,datay):
     tmpx,tmpy = np.vstack(tmp[0]),np.hstack(tmp[1])
     return tmpx,tmpy
 
-def show_usps(ax, data):
+def show_usps(ax: Axes, data):
   im = ax.imshow(data.reshape((16,16)),interpolation="nearest",cmap="gray")
   ax.get_figure().colorbar(im, ax=ax)
 
@@ -117,35 +144,73 @@ test_x, test_y = load_usps(data_path / 'USPS_test.txt')
 # plt.show()
 
 
-def ex1():
-  model = Lineaire(eps=1e-3)
+def plot1():
+  def run(against_all: bool):
+    model = Lineaire(eps=1e-3, max_iter=20)
 
-  train_mask = (train_y == 6) #| (train_y == 9)
-  train_ax = train_x[train_mask, :]
-  train_ay = np.where(train_y[train_mask] == 6, 1, -1)
+    train_mask = (train_y == 6) | ((train_y == 9) if not against_all else True)
+    # train_mask = [True] * len(train_y) # (train_y == 6) | ((train_y == 9) if not against_all else True)
+    train_ax = train_x[train_mask, :]
+    train_ay = np.where(train_y[train_mask] == 6, 1, -1)
 
-  test_mask = (test_y == 6) #| (test_y == 9)
-  test_ax = test_x[test_mask, :]
-  test_ay = np.where(test_y[test_mask] == 6, 1, -1)
+    # train_ax += np.random.normal(0, 10.0, train_ax.shape)
 
-  scores = model.fit(train_ax, train_ay, test_ax, test_ay)
-  print(scores)
+    test_mask = (test_y == 6) | ((test_y == 9) if not against_all else True)
+    # test_mask = [True] * len(test_y)
+    test_ax = test_x[test_mask, :]
+    test_ay = np.where(test_y[test_mask] == 6, 1, -1)
+    # print(test_y[test_mask] == 1)
+    # test_ay = np.random.choice([-1, 1], len(test_y[test_mask]), p=[0.5, 0.5]) # np.where(test_y[test_mask] == 1, 1, -1)
 
-  # print(model.score(ax, ay))
-  # print(model.score(test_x, test_y))
+    # test_ax += np.random.normal(0, 15.0, test_ax.shape)
 
-  fig, ax = plt.subplots()
+    scores = model.fit(train_ax, train_ay, test_ax, test_ay, batch_size=50)
+    # print(scores)
 
-  show_usps(ax, model.w)
+    # print((test_y[test_mask] != 6).sum())
+    # print((test_y[test_mask] == 6).sum())
+
+    # p = model.predict(test_ax)
+    # print((p == 1).sum())
+
+    # print(model.score(train_ax, train_ay))
+    # print(model.score(test_ax, test_ay))
+
+    fig1, ax = plt.subplots()
+
+    show_usps(ax, model.w)
 
 
-  fig, ax = plt.subplots()
+    fig2, ax = plt.subplots()
 
-  ax.plot(np.arange(scores.shape[0]), scores[:, 0], label='Train')
-  ax.plot(np.arange(scores.shape[0]), scores[:, 1], label='Test')
-  ax.legend()
+    ax.plot(np.arange(scores.shape[0]), scores[:, 0], label='Entraînement')
+    ax.plot(np.arange(scores.shape[0]), scores[:, 1], label='Test')
+    ax.legend()
 
-  plt.show()
+    ax.set_xlabel('Époque')
+    ax.set_ylabel('Score')
+
+    return fig1, fig2
 
 
-ex1()
+  fig1, fig2 = run(False)
+
+  with (output_path / '1.png').open('wb') as file:
+    fig1.savefig(file)
+
+  with (output_path / '2.png').open('wb') as file:
+    fig2.savefig(file)
+
+
+  fig1, fig2 = run(True)
+
+  with (output_path / '3.png').open('wb') as file:
+    fig1.savefig(file)
+
+  with (output_path / '4.png').open('wb') as file:
+    fig2.savefig(file)
+
+  # plt.show()
+
+
+plot1()

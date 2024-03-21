@@ -330,7 +330,7 @@ def plot4():
   ax.set_ylabel('Vraisemblance moyenne')
   ax.grid()
 
-  fig.legend()
+  ax.legend()
 
   with (output_path / '4.png').open('wb') as file:
     fig.savefig(file)
@@ -394,7 +394,7 @@ def plot7():
     ax.set_xscale('log')
     ax.grid()
 
-    fig.legend()
+    ax.legend()
 
     with (output_path / f'{plot_name}.png').open('wb') as file:
       fig.savefig(file)
@@ -448,7 +448,7 @@ def plot10():
     ax.set_xscale('log')
     ax.grid()
 
-    fig.legend()
+    ax.legend()
 
     with (output_path / f'{plot_name}.png').open('wb') as file:
       fig.savefig(file)

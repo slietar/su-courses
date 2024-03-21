@@ -6,6 +6,7 @@ mod features;
 mod gn;
 mod mutations;
 mod plddt;
+mod structures;
 mod variants;
 
 
@@ -19,6 +20,7 @@ struct Output {
     pathogenicity_labels: Vec<&'static str>,
     plddt: Vec<f64>,
     sequence: Vec<char>,
+    structures: Vec<self::structures::ExperimentalStructure>,
     variants: Vec<self::variants::Variant>,
 }
 
@@ -28,21 +30,8 @@ fn main() -> Result<(), Box<dyn Error>> {
     let mutations = self::mutations::process_mutations("./data/mutations.csv")?;
     let plddt = self::plddt::process_plddt()?;
     let protein_data = self::gn::process_coordinates("./data/coordinates.json")?;
+    let structures = self::structures::process_structures()?;
     let variant_data = self::variants::process_variants("./data/variants.csv")?;
-
-/*
-    let mut output = String::new();
-    output += "[";
-
-    for domain in &domains {
-        let (start, end) = &domain.range;
-        output += "'";
-        output += &String::from_iter(&protein.sequence[(start - 1)..(*end)]);
-        output += "', ";
-    }
-
-    output += "]";
-    println!("{}", output); */
 
     let mut writer = File::create("./output/data.pkl")?;
     let output = Output {
@@ -54,6 +43,7 @@ fn main() -> Result<(), Box<dyn Error>> {
         pathogenicity_labels: variant_data.pathogenicity_labels,
         plddt,
         sequence: protein_data.sequence,
+        structures,
         variants: variant_data.variants,
     };
 

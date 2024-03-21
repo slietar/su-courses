@@ -17,6 +17,7 @@ exons = pd.DataFrame.from_records(pkl_data['exons'], index='name')
 mutations = pd.DataFrame.from_records(pkl_data['mutations'], index='name')
 pathogenicity_labels = pkl_data['pathogenicity_labels']
 sequence = pkl_data['sequence']
+structures = pd.DataFrame.from_records(pkl_data['structures'], index='id')
 variants = pd.DataFrame.from_records(pkl_data['variants'], index='name')
 
 all_mutations = pd.concat([
@@ -36,6 +37,7 @@ if __name__ == '__main__':
     (exons, 'Exons'),
     (mutations, 'Mutations'),
     (plddt_alphafold_global, 'PLDDT'),
+    (structures, 'Structures'),
     (variants, 'Variants')
   ]:
     print(label.upper())
@@ -56,5 +58,6 @@ __all__ = [
   'plddt_alphafold_global',
   'protein_length',
   'sequence',
+  'structures',
   'variants'
 ]

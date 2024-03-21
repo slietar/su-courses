@@ -83,4 +83,4 @@ def gen_arti(centerx=1,centery=1,sigma=0.1,nbex=1000,data_type=0,epsilon=0.02):
     idx = np.random.permutation((range(y.size)))
     data=data[idx,:]
     y=y[idx]
-    return data,y.reshape(-1, 1)
+    return data, y

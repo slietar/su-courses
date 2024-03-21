@@ -41,7 +41,11 @@ ax.set_xticks(
   rotation='vertical'
 )
 
-fig.colorbar(im, ax=ax)
+cbar = fig.colorbar(im, ax=ax)
+
+cbar.ax.get_yaxis().labelpad = 15
+cbar.ax.set_ylabel('RMSD (Å)', rotation=270)
+
 fig.subplots_adjust(left=0.3)
 
 with (shared.output_path / 'rmsd_methods.png').open('wb') as file:
