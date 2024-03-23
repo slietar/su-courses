@@ -17,16 +17,28 @@ def perceptron_grad(w: np.ndarray, x: np.ndarray, y: np.ndarray):
   return (-y * x.T * (y * np.dot(x, w) <= 0)).sum(axis=1)
 
 
+def proj_poly(x: np.ndarray, /):
+  return np.c_[x, (x[..., None, :] * x[..., :, None]).reshape((*x.shape[:-1], -1))]
+
+def proj_biais(x: np.ndarray, /):
+  return np.c_[x, np.ones((*x.shape[:-1], 1))]
+
+def proj_identity(x: np.ndarray, /):
+  return x
+
+
 class Lineaire:
   def __init__(
     self,
     loss: Callable[[np.ndarray, np.ndarray, np.ndarray], np.ndarray] = perceptron_loss,
     loss_g: Callable[[np.ndarray, np.ndarray, np.ndarray], np.ndarray] = perceptron_grad,
     max_iter: int = 100,
+    projection: Callable[[np.ndarray], np.ndarray] = proj_identity,
     eps: float = 0.01
   ):
     self.max_iter = max_iter
     self.eps = eps
+    self.projection = projection
     self.w: Optional[np.ndarray] = None
     self.loss = loss
     self.loss_g = loss_g
@@ -35,9 +47,13 @@ class Lineaire:
     batch_size_ = batch_size if batch_size is not None else len(y)
 
     scores = np.zeros((self.max_iter + 1, 2))
-    # self.w = np.zeros(x.shape[1])
-    self.w = np.random.uniform(-1.0, 1.0, x.shape[1])
+    px = self.projection(x)
+
+    self.w = np.zeros(px.shape[1])
+    # self.w = np.random.uniform(-1.0, 1.0, x.shape[1])
     # print(self.loss(w, x, y))
+
+    test_px = self.projection(test_x) if (test_x is not None) else None
 
     it = 0
     scores[0, 0] = self.score(x, y)
@@ -52,7 +68,7 @@ class Lineaire:
 
     for it in range(self.max_iter):
       random_indices = np.random.permutation(len(y))
-      batches_x = np.split(x[random_indices, :], split)
+      batches_x = np.split(px[random_indices, :], split)
       batches_y = np.split(y[random_indices], split)
 
       # batches_x = batches_x[:1]
@@ -73,19 +89,22 @@ class Lineaire:
       # print(self.loss(w, x, y), w, self.loss_g(w, x, y))
       # print(y * np.dot(x, w))
 
-      scores[it + 1, 0] = self.score(x, y)
+      scores[it + 1, 0] = self._score_projected(px, y)
 
-      if (test_x is not None) and (test_y is not None):
-        scores[it + 1, 1] = self.score(test_x, test_y)
+      if (test_px is not None) and (test_y is not None):
+        scores[it + 1, 1] = self._score_projected(test_px, test_y)
 
     return scores[:(it + 2), :]
 
-  def predict(self, x: np.ndarray):
+  def _predict_projected(self, px: np.ndarray):
     assert self.w is not None
-    return np.sign(np.dot(x, self.w))
+    return np.sign(np.dot(px, self.w))
+
+  def _score_projected(self, px: np.ndarray, y: np.ndarray):
+    return (self._predict_projected(px) == y).sum() / len(y)
 
   def score(self, x: np.ndarray, y: np.ndarray):
-    return (self.predict(x) == y).sum() / len(y)
+    return self._score_projected(self.projection(x), y)
 
 
 def load_usps(fn):
@@ -153,7 +172,7 @@ def plot1():
     train_ax = train_x[train_mask, :]
     train_ay = np.where(train_y[train_mask] == 6, 1, -1)
 
-    # train_ax += np.random.normal(0, 10.0, train_ax.shape)
+    train_ax += np.random.normal(0, 10.0, train_ax.shape)
 
     test_mask = (test_y == 6) | ((test_y == 9) if not against_all else True)
     # test_mask = [True] * len(test_y)
@@ -164,7 +183,7 @@ def plot1():
 
     # test_ax += np.random.normal(0, 15.0, test_ax.shape)
 
-    scores = model.fit(train_ax, train_ay, test_ax, test_ay, batch_size=50)
+    scores = model.fit(train_ax, train_ay, test_ax, test_ay, batch_size=100)
     # print(scores)
 
     # print((test_y[test_mask] != 6).sum())
@@ -183,9 +202,9 @@ def plot1():
 
     fig2, ax = plt.subplots()
 
-    ax.plot(np.arange(scores.shape[0]), scores[:, 0], label='Entraînement')
-    ax.plot(np.arange(scores.shape[0]), scores[:, 1], label='Test')
-    ax.legend()
+    ax.plot(np.arange(1, scores.shape[0]), scores[1:, 0], label='Entraînement')
+    ax.plot(np.arange(1, scores.shape[0]), scores[1:, 1], label='Test')
+    ax.legend(loc='lower right')
 
     ax.set_xlabel('Époque')
     ax.set_ylabel('Score')
@@ -213,4 +232,49 @@ def plot1():
   # plt.show()
 
 
-plot1()
+def plot2():
+  x, y = gen_arti(data_type=2, epsilon=0.1)
+  print(x.shape)
+  print(y.shape)
+
+  model = Lineaire(eps=1e-3, max_iter=20, projection=proj_poly)
+
+  fig, ax = plt.subplots()
+
+  scores = model.fit(x, y)
+  # print(model.w)
+
+  ax.plot(np.arange(1, scores.shape[0]), scores[1:, 0], label='Entraînement')
+
+
+  fig, ax = plt.subplots()
+
+  plot_data(ax, x, y)
+
+  delta = 0.025
+  xrange = np.arange(-2, 2, delta)
+  yrange = np.arange(-2, 2, delta)
+  X, Y = np.meshgrid(xrange,yrange)
+
+  # F is one side of the equation, G is the other
+  # F = X**2
+  # G = 1- (5*Y/4 - np.sqrt(np.abs(X)))**2
+  # plt.contour((F - G), [0])
+  # plt.show()
+
+  ds = model.projection(np.array([X, Y]).T)
+  dv = np.dot(ds, model.w)
+
+  print(ds.shape)
+  print(dv.shape)
+
+  ax.contour(X, Y, dv, levels=[0], colors='red')
+
+  # print(ds.shape)
+  # print(np.array([xrange, yrange]).shape)
+
+
+  plt.show()
+
+
+plot2()
