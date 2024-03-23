@@ -1,8 +1,11 @@
-use std::error::Error;
+use std::{borrow::BorrowMut, error::Error};
+use pdbtbx::{Atom, Residue};
 use wgpu::util::DeviceExt;
 
 
-async fn run() -> Result<(), Box<dyn Error>> {
+/* async fn run() -> Result<(), Box<dyn Error>> {
+    let cutoff = 20.0f32;
+
     let filename = "../drive/FBN1_AlphaFold.pdb";
     let filename = "2h1l.pdb";
     // let filename = "5j7o.pdb";
@@ -11,11 +14,6 @@ async fn run() -> Result<(), Box<dyn Error>> {
 
     let mut atoms_data = vec![0f32; structure.atom_count() * 4];
     let mut residues_data = vec![0u32; structure.residue_count() * 2];
-
-    let settings_data = [
-        &(structure.atom_count() as u32).to_le_bytes()[..],
-        &(100.0f32).to_le_bytes(),
-    ].concat();
 
     let max_residue_atom_count = structure.residues()
         .map(|residue| residue.atom_count())
@@ -38,6 +36,7 @@ async fn run() -> Result<(), Box<dyn Error>> {
             current_atom_offset += 1;
         }
     }
+} */
 
     // eprintln!(">> {:?}", &atoms_data[(atoms_data.len() - 10)..]);
     // eprintln!("{:?}", &atoms_data[0..10]);
@@ -47,175 +46,374 @@ async fn run() -> Result<(), Box<dyn Error>> {
     // return Ok(());
 
 
-    // Request instance and adapter
+enum BufferInfo<'a> {
+    Data(&'a [u8]),
+    Size(usize),
+}
 
-    let instance = wgpu::Instance::default();
+fn write_buffer(device: &wgpu::Device, buffer_source: &mut Option<wgpu::Buffer>, info: BufferInfo, usage: wgpu::BufferUsages) {
+    *buffer_source = None;
 
-    let adapter = instance
-        .request_adapter(&wgpu::RequestAdapterOptions::default())
-        .await
-        .ok_or("Failed to request adapter")?;
+    let size = match info {
+        BufferInfo::Data(data) => data.len(),
+        BufferInfo::Size(size) => size,
+    };
 
-    let (device, queue) = adapter
-        .request_device(
-            &wgpu::DeviceDescriptor {
+    let buffer = match buffer_source {
+        Some(ref buffer) if buffer.size() >= size as u64 => buffer,
+        _ => {
+            let atoms_buffer = device.create_buffer(&wgpu::BufferDescriptor {
                 label: None,
-                required_features: wgpu::Features::empty(),
-                required_limits: wgpu::Limits::downlevel_defaults(),
-            },
-            None,
-        )
-        .await
-        .unwrap();
+                mapped_at_creation: match info {
+                    BufferInfo::Data(_) => true,
+                    BufferInfo::Size(_) => false,
+                },
+                size: ((size as f32) * 1.5) as u64,
+                usage,
+            });
 
-    let _info = adapter.get_info();
+            *buffer_source = Some(atoms_buffer);
+            buffer_source.as_ref().unwrap()
+        }
+    };
 
+    if let BufferInfo::Data(data) = info {
+        {
+            let mut buffer_mut = buffer.slice(..).get_mapped_range_mut();
+            buffer_mut[..data.len()].copy_from_slice(data);
+        }
 
-    // Create pipeline
-
-    let shader_text = std::fs::read_to_string("./src/shader.wgsl").unwrap();
-    let shader_module = device.create_shader_module(wgpu::ShaderModuleDescriptor {
-        label: None,
-        source: wgpu::ShaderSource::Wgsl(shader_text.into()),
-    });
-
-    let compute_pipeline = device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-        label: None,
-        layout: None,
-        module: &shader_module,
-        entry_point: "main",
-    });
-
-    let bind_group_layout = compute_pipeline.get_bind_group_layout(0);
-
-
-    // Create buffers
-
-    let atoms_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-        label: Some("Atoms buffer"),
-        contents: bytemuck::cast_slice(&atoms_data),
-        usage: wgpu::BufferUsages::STORAGE,
-    });
-
-    let residues_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-        label: Some("Residues buffer"),
-        contents: bytemuck::cast_slice(&residues_data),
-        usage: wgpu::BufferUsages::STORAGE,
-    });
-
-    let settings_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-        label: Some("Settings buffer"),
-        contents: &settings_data,
-        usage: wgpu::BufferUsages::STORAGE,
-    });
-
-    let output_buffer = device.create_buffer(&wgpu::BufferDescriptor {
-        label: None,
-        size: (structure.residue_count() * 4) as u64,
-        usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_SRC,
-        mapped_at_creation: false,
-    });
-
-    let read_buffer = device.create_buffer(&wgpu::BufferDescriptor {
-        label: None,
-        size: output_buffer.size(),
-        usage: wgpu::BufferUsages::MAP_READ | wgpu::BufferUsages::COPY_DST,
-        mapped_at_creation: false,
-    });
-
-
-    // Create bind group
-
-    let bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
-        label: None,
-        layout: &bind_group_layout,
-        entries: &[
-            wgpu::BindGroupEntry {
-                binding: 0,
-                resource: atoms_buffer.as_entire_binding(),
-            },
-            wgpu::BindGroupEntry {
-                binding: 1,
-                resource: residues_buffer.as_entire_binding(),
-            },
-            wgpu::BindGroupEntry {
-                binding: 2,
-                resource: settings_buffer.as_entire_binding(),
-            },
-            wgpu::BindGroupEntry {
-                binding: 3,
-                resource: output_buffer.as_entire_binding(),
-            },
-        ],
-    });
-
-
-    // Encode commands
-
-    let mut encoder = device.create_command_encoder(&wgpu::CommandEncoderDescriptor { label: None });
-
-    {
-        let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
-            label: None,
-            timestamp_writes: None,
-        });
-
-        pass.set_pipeline(&compute_pipeline);
-        pass.set_bind_group(0, &bind_group, &[]);
-        pass.dispatch_workgroups(
-            structure.residue_count() as u32,
-            1,
-            1
-        );
+        buffer.unmap();
     }
 
-    encoder.copy_buffer_to_buffer(&output_buffer, 0, &read_buffer, 0, read_buffer.size());
+}
 
-    // queue.write_buffer(&settings_buffer, 4, bytemuck::cast_slice(&[current_y as u32]));
-    queue.submit(Some(encoder.finish()));
 
-    let buffer_slice = read_buffer.slice(..);
-    let (sender, receiver) = flume::bounded(1);
+struct Engine {
+    bind_group_layout: wgpu::BindGroupLayout,
+    device: wgpu::Device,
+    pipeline: wgpu::ComputePipeline,
+    queue: wgpu::Queue,
 
-    buffer_slice.map_async(wgpu::MapMode::Read, move |v| sender.send(v).unwrap());
-    device.poll(wgpu::Maintain::wait()).panic_on_timeout();
+    atom_count: Option<usize>,
+    residue_count: Option<usize>,
 
-    if let Ok(Ok(())) = receiver.recv_async().await {
-        let data = buffer_slice.get_mapped_range();
-        let cast_data = bytemuck::cast_slice::<u8, f32>(&data);
+    atoms_buffer: Option<wgpu::Buffer>,
+    output_buffer: Option<wgpu::Buffer>,
+    read_buffer: Option<wgpu::Buffer>,
+    residues_buffer: Option<wgpu::Buffer>,
+    settings_buffer: wgpu::Buffer,
+}
 
-        // eprintln!("{:?}", &cast_data[0..12]);
+impl Engine {
+    async fn new() -> Result<Self, Box<dyn Error>> {
+        // Request instance and adapter
 
-        let mut output_structure = structure.clone();
-        let mut current_residue_offset = 0;
+        let instance = wgpu::Instance::default();
 
-        // let i = 5;
-        // eprintln!("{}", cast_data[5]);
-        // eprintln!("{}", f32::from_le_bytes(data[(i * 4)..(i * 4 + 4)].try_into().unwrap()));
+        let adapter = instance
+            .request_adapter(&wgpu::RequestAdapterOptions::default())
+            .await
+            .ok_or("Failed to request adapter")?;
 
-        for (residue_index, residue) in output_structure.residues_mut().enumerate() {
-            for atom in residue.atoms_mut() {
-                // if cast_data[residue_index] < 0.0 {
-                //     eprintln!("{:?}", &cast_data[(residue_index - 2)..(residue_index + 2)]);
-                // }
+        let (device, queue) = adapter
+            .request_device(
+                &wgpu::DeviceDescriptor {
+                    label: None,
+                    required_features: wgpu::Features::empty(),
+                    required_limits: wgpu::Limits::downlevel_defaults(),
+                },
+                None,
+            )
+            .await
+            .unwrap();
 
-                atom.set_b_factor(cast_data[residue_index] as f64)?;
-                current_residue_offset += 1;
+        let _info = adapter.get_info();
+
+
+        // Create pipeline
+
+        let shader_text = std::fs::read_to_string("./src/shader.wgsl").unwrap();
+        let shader_module = device.create_shader_module(wgpu::ShaderModuleDescriptor {
+            label: None,
+            source: wgpu::ShaderSource::Wgsl(shader_text.into()),
+        });
+
+        let pipeline = device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+            label: None,
+            layout: None,
+            module: &shader_module,
+            entry_point: "main",
+        });
+
+        let bind_group_layout = pipeline.get_bind_group_layout(0);
+
+
+        // Create buffers
+
+        // let atoms_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+        //     label: Some("Atoms buffer"),
+        //     contents: bytemuck::cast_slice(&atoms_data),
+        //     usage: wgpu::BufferUsages::STORAGE,
+        // });
+
+        // let residues_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+        //     label: Some("Residues buffer"),
+        //     contents: bytemuck::cast_slice(&residues_data),
+        //     usage: wgpu::BufferUsages::STORAGE,
+        // });
+
+        // let settings_data = [
+        //     &(structure.atom_count() as u32).to_le_bytes()[..],
+        //     &cutoff.to_le_bytes(),
+        // ].concat();
+
+        let settings_buffer = device.create_buffer(&wgpu::BufferDescriptor {
+            label: Some("Settings buffer"),
+            mapped_at_creation: false,
+            size: 8,
+            usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::MAP_WRITE,
+        });
+
+        // let output_buffer = device.create_buffer(&wgpu::BufferDescriptor {
+        //     label: None,
+        //     size: (structure.residue_count() * 4) as u64,
+        //     usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_SRC,
+        //     mapped_at_creation: false,
+        // });
+
+        // let read_buffer = device.create_buffer(&wgpu::BufferDescriptor {
+        //     label: None,
+        //     mapped_at_creation: false,
+        //     size: output_buffer.size(),
+        //     usage: wgpu::BufferUsages::MAP_READ | wgpu::BufferUsages::COPY_DST,
+        // });
+
+        Ok(Self {
+            bind_group_layout,
+            device,
+            pipeline,
+            queue,
+
+            atom_count: None,
+            residue_count: None,
+
+            read_buffer: None,
+            output_buffer: None,
+            settings_buffer,
+            atoms_buffer: None,
+            residues_buffer: None,
+        })
+    }
+
+    fn set_atoms(&mut self, residues: Vec<&Residue>) {
+        let atom_count: usize = residues.iter().map(|residue| residue.atom_count()).sum();
+
+        let mut atoms_data = vec![0f32; atom_count * 4];
+        let mut residues_data = vec![0u32; residues.len() * 2];
+
+        let mut current_atom_offset = 0;
+
+        for (residue_index, residue) in residues.iter().enumerate() {
+            residues_data[residue_index * 2 + 0] = residue.atom_count() as u32;
+            residues_data[residue_index * 2 + 1] = current_atom_offset as u32;
+
+            for atom in residue.atoms() {
+                atoms_data[current_atom_offset * 4 + 0] = atom.x() as f32;
+                atoms_data[current_atom_offset * 4 + 1] = atom.y() as f32;
+                atoms_data[current_atom_offset * 4 + 2] = atom.z() as f32;
+                current_atom_offset += 1;
             }
         }
 
-        pdbtbx::save(&output_structure, "output.pdb", pdbtbx::StrictnessLevel::Medium)
-            .map_err(|e| format!("Failed to save PDB: {:?}", e))?;
+        write_buffer(&self.device, &mut self.atoms_buffer, BufferInfo::Data(bytemuck::cast_slice(&atoms_data)), wgpu::BufferUsages::STORAGE);
+        write_buffer(&self.device, &mut self.residues_buffer, BufferInfo::Data(bytemuck::cast_slice(&atoms_data)), wgpu::BufferUsages::STORAGE);
+        write_buffer(&self.device, &mut self.output_buffer, BufferInfo::Size(residues.len() * 4), wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_SRC);
+        write_buffer(&self.device, &mut self.read_buffer, BufferInfo::Size(residues.len() * 4), wgpu::BufferUsages::MAP_READ | wgpu::BufferUsages::COPY_DST);
 
-        drop(data);
-        read_buffer.unmap();
-    } else {
-        panic!("Failed to run compute on gpu!");
+        self.atom_count = Some(atom_count);
+        self.residue_count = Some(residues.len());
+
+        // let settings_data = [
+        //     &(atom_count as u32).to_le_bytes()[..],
+        //     &cutoff.to_le_bytes(),
+        // ].concat();
+
+/*         let atoms_buffer = match self.atoms_buffer {
+            Some(ref buffer) if buffer.size() >= (atoms_data.len() * 4) as u64 => buffer,
+            _ => {
+                let atoms_buffer = self.device.create_buffer(&wgpu::BufferDescriptor {
+                    label: Some("Atoms buffer"),
+                    mapped_at_creation: true,
+                    size: (atoms_data.len() * 4) as u64,
+                    usage: wgpu::BufferUsages::STORAGE,
+                });
+
+                self.atoms_buffer = Some(atoms_buffer);
+                self.atoms_buffer.as_ref().unwrap()
+            }
+        };
+
+        // atoms_buffer.write(bytemuck::cast_slice(&atoms_data));
+
+        let mut buffer_mut = atoms_buffer.slice(..).get_mapped_range_mut();
+        let target_data = bytemuck::cast_slice(&atoms_data);
+        buffer_mut[..target_data.len()].copy_from_slice(target_data);
+
+        // self.atoms_buffer = Some(self.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+        //     label: Some("Atoms buffer"),
+        //     contents: bytemuck::cast_slice(&atoms_data),
+        //     usage: wgpu::BufferUsages::STORAGE,
+        // })); */
     }
 
-    Ok(())
+    async fn run(&mut self, cutoff_distance: f32) -> Result<(), Box<dyn Error>> {
+        // Write settings
+
+        let settings_data = [
+            &(self.atom_count.unwrap() as u32).to_le_bytes()[..],
+            &cutoff_distance.to_le_bytes(),
+        ].concat();
+
+        // write_buffer(&self.device, Some(&mut self.settings_buffer), BufferInfo::Data(&settings_data));
+
+        {
+            let (sender, receiver) = flume::bounded(1);
+
+            // buffer_slice.map_async(wgpu::MapMode::Read, move |v| sender.send(v).unwrap());
+
+            self.settings_buffer.slice(..).map_async(wgpu::MapMode::Write, move |v| {
+                sender.send(v).unwrap();
+            });
+
+            self.device.poll(wgpu::Maintain::wait()).panic_on_timeout();
+
+            if let Ok(Ok(())) = receiver.recv_async().await {
+                let mut buffer_mut = self.settings_buffer.slice(..).get_mapped_range_mut();
+                buffer_mut[..settings_data.len()].copy_from_slice(&settings_data);
+            }
+        }
+
+        self.settings_buffer.unmap();
+
+
+        // Create bind group
+
+        let bind_group = self.device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: None,
+            layout: &self.bind_group_layout,
+            entries: &[
+                wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: self.atoms_buffer.as_ref().unwrap().as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 1,
+                    resource: self.residues_buffer.as_ref().unwrap().as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 2,
+                    resource: self.settings_buffer.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 3,
+                    resource: self.output_buffer.as_ref().unwrap().as_entire_binding(),
+                },
+            ],
+        });
+
+
+        // Encode commands
+
+        let mut encoder = self.device.create_command_encoder(&wgpu::CommandEncoderDescriptor { label: None });
+
+        {
+            let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
+                label: None,
+                timestamp_writes: None,
+            });
+
+            pass.set_pipeline(&self.pipeline);
+            pass.set_bind_group(0, &bind_group, &[]);
+            pass.dispatch_workgroups(
+                self.residue_count.unwrap() as u32,
+                1,
+                1
+            );
+        }
+
+        let read_buffer = self.read_buffer.as_ref().unwrap();
+
+        encoder.copy_buffer_to_buffer(&self.output_buffer.as_ref().unwrap(), 0, read_buffer, 0, read_buffer.size());
+
+        // queue.write_buffer(&settings_buffer, 4, bytemuck::cast_slice(&[current_y as u32]));
+        self.queue.submit(Some(encoder.finish()));
+
+        let buffer_slice = read_buffer.slice(..);
+        let (sender, receiver) = flume::bounded(1);
+
+        buffer_slice.map_async(wgpu::MapMode::Read, move |v| sender.send(v).unwrap());
+        self.device.poll(wgpu::Maintain::wait()).panic_on_timeout();
+
+        if let Ok(Ok(())) = receiver.recv_async().await {
+            let data = buffer_slice.get_mapped_range();
+            let cast_data = bytemuck::cast_slice::<u8, f32>(&data);
+
+            // eprintln!("{:?}", &cast_data[0..12]);
+
+            // let mut output_structure = structure.clone();
+            // let mut current_residue_offset = 0;
+
+            // // let i = 5;
+            // // eprintln!("{}", cast_data[5]);
+            // // eprintln!("{}", f32::from_le_bytes(data[(i * 4)..(i * 4 + 4)].try_into().unwrap()));
+
+            // for (residue_index, residue) in output_structure.residues_mut().enumerate() {
+            //     for atom in residue.atoms_mut() {
+            //         // if cast_data[residue_index] < 0.0 {
+            //         //     eprintln!("{:?}", &cast_data[(residue_index - 2)..(residue_index + 2)]);
+            //         // }
+
+            //         atom.set_b_factor(cast_data[residue_index] as f64)?;
+            //         current_residue_offset += 1;
+            //     }
+            // }
+
+            // pdbtbx::save(&output_structure, "output.pdb", pdbtbx::StrictnessLevel::Medium)
+            //     .map_err(|e| format!("Failed to save PDB: {:?}", e))?;
+
+            drop(data);
+            read_buffer.unmap();
+        } else {
+            panic!("Failed to run compute on gpu!");
+        }
+
+        Ok(())
+    }
+}
+
+
+async fn run() {
+    let mut engine = Engine::new().await.unwrap();
+
+    let filename = "2h1l.pdb";
+    let (structure, _) = pdbtbx::open(filename, pdbtbx::StrictnessLevel::Loose)
+        .map_err(|e| format!("Failed to open PDB: {:?}", e))
+        .unwrap();
+
+    let cutoff = 20.0f32;
+
+    let residues = structure.residues().collect::<Vec<_>>();
+    engine.set_atoms(residues);
+
+    // let residues = structure.residues().collect::<Vec<_>>();
+    // engine.set_atoms(residues);
+
+    engine.run(cutoff).await.unwrap();
+    // engine.run(cutoff).await.unwrap();
+
 }
 
 fn main() {
-    pollster::block_on(run()).unwrap();
+    pollster::block_on(run());
 }
