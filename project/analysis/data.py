@@ -16,7 +16,7 @@ effect_labels = pkl_data['effect_labels']
 exons = pd.DataFrame.from_records(pkl_data['exons'], index='name')
 mutations = pd.DataFrame.from_records(pkl_data['mutations'], index='name')
 pathogenicity_labels = pkl_data['pathogenicity_labels']
-sequence = pkl_data['sequence']
+sequence = ''.join(pkl_data['sequence'])
 structures = pd.DataFrame.from_records(pkl_data['structures'], index='id')
 variants = pd.DataFrame.from_records(pkl_data['variants'], index='name')
 
@@ -28,15 +28,12 @@ all_mutations = pd.concat([
 gemme_threshold = -0.779
 protein_length = len(sequence)
 
-plddt_alphafold_global = pd.Series(pkl_data['plddt'], index=pd.Series(range(1, len(sequence) + 1), name='position'), name='plddt_alphafold_global')
-
 
 if __name__ == '__main__':
   for df, label in [
     (domains, 'Domains'),
     (exons, 'Exons'),
     (mutations, 'Mutations'),
-    (plddt_alphafold_global, 'PLDDT'),
     (structures, 'Structures'),
     (variants, 'Variants')
   ]:
@@ -55,7 +52,6 @@ __all__ = [
   'gemme_threshold',
   'mutations',
   'pathogenicity_labels',
-  'plddt_alphafold_global',
   'protein_length',
   'sequence',
   'structures',

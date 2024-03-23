@@ -152,8 +152,8 @@ pub fn process_structures() -> Result<Vec<ExperimentalStructure>, Box<dyn Error>
                         ));
 
                         break;
-                    }
-                    _ => ()
+                    },
+                    _ => (),
                 }
             }
 
