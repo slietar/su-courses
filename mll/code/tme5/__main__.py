@@ -1,13 +1,15 @@
+import itertools
 import math
+import sys
 from pathlib import Path
-from typing import Callable, Optional
+from typing import Callable, Optional, Sequence
 
-from matplotlib.axes import Axes
 import numpy as np
 from matplotlib import pyplot as plt
+from matplotlib.axes import Axes
+from mpl_toolkits.mplot3d import axes3d
 
-from .. import config
-from ..mltools import gen_arti, plot_data
+from .. import config, mltools
 
 
 def perceptron_loss(w: np.ndarray, x: np.ndarray, y: np.ndarray):
@@ -18,13 +20,23 @@ def perceptron_grad(w: np.ndarray, x: np.ndarray, y: np.ndarray):
 
 
 def proj_poly(x: np.ndarray, /):
-  return np.c_[x, (x[..., None, :] * x[..., :, None]).reshape((*x.shape[:-1], -1))]
+  return np.c_[
+    np.ones((*x.shape[:-1], 1)),
+    x,
+    *(x[..., a, None] * x[..., b, None] for a, b in itertools.combinations_with_replacement(range(x.shape[-1]), 2))
+  ]
 
 def proj_biais(x: np.ndarray, /):
   return np.c_[x, np.ones((*x.shape[:-1], 1))]
 
 def proj_identity(x: np.ndarray, /):
   return x
+
+def create_proj_gauss(base: np.ndarray, sigma: float):
+  def proj_gauss(x: np.ndarray, /):
+    return np.exp(-0.5 * (np.linalg.norm(x[..., None, :] - base, axis=-1) / sigma) ** 2)
+
+  return proj_gauss
 
 
 class Lineaire:
@@ -43,7 +55,7 @@ class Lineaire:
     self.loss = loss
     self.loss_g = loss_g
 
-  def fit(self, x: np.ndarray, y: np.ndarray, test_x: Optional[np.ndarray] = None, test_y: Optional[np.ndarray] = None, *, batch_size: Optional[int] = None):
+  def fit(self, x: np.ndarray, y: np.ndarray, test_x: Optional[np.ndarray] = None, test_y: Optional[np.ndarray] = None, /, *, batch_size: Optional[int] = None):
     batch_size_ = batch_size if batch_size is not None else len(y)
 
     scores = np.zeros((self.max_iter + 1, 2))
@@ -96,14 +108,21 @@ class Lineaire:
 
     return scores[:(it + 2), :]
 
-  def _predict_projected(self, px: np.ndarray):
+  def _predict_projected(self, px: np.ndarray, /):
     assert self.w is not None
     return np.sign(np.dot(px, self.w))
 
-  def _score_projected(self, px: np.ndarray, y: np.ndarray):
+  def _score_projected(self, px: np.ndarray, y: np.ndarray, /):
     return (self._predict_projected(px) == y).sum() / len(y)
 
-  def score(self, x: np.ndarray, y: np.ndarray):
+  def predict(self, x: np.ndarray, /):
+    return self._predict_projected(self.projection(x))
+
+  def predict_value(self, x: np.ndarray, /):
+    assert self.w is not None
+    return np.dot(self.projection(x), self.w)
+
+  def score(self, x: np.ndarray, y: np.ndarray, /):
     return self._score_projected(self.projection(x), y)
 
 
@@ -128,7 +147,7 @@ def show_usps(ax: Axes, data):
   ax.get_figure().colorbar(im, ax=ax)
 
 
-# x, y = gen_arti(epsilon=0.5)
+# x, y = mltools.gen_arti(epsilon=0.5)
 
 # l = Lineaire(max_iter=10)
 # l.fit(x, y)
@@ -139,7 +158,7 @@ def show_usps(ax: Axes, data):
 
 # fig, ax = plt.subplots()
 
-# plot_data(ax, x, y)
+# mltools.plot_data(ax, x, y)
 # ax.axline((0.0, 0.0), slope=(-l.w[0] / l.w[1]), color='C2', linestyle='--')
 
 # plt.show()
@@ -161,6 +180,17 @@ test_x, test_y = load_usps(data_path / 'USPS_test.txt')
 # print(train_y[0])
 
 # plt.show()
+
+
+def plot_boundary(ax: Axes, fn: Callable[[np.ndarray], np.ndarray], *, label: bool = True, x_range: tuple[float, float] = (-2, 2), y_range: tuple[float, float] = (-2, 2)):
+  delta = 0.025
+  x_values = np.linspace(*x_range, 100)
+  y_values = np.linspace(*y_range, 100)
+
+  x, y = np.meshgrid(x_values,y_values)
+
+  ax.contour(x, y, fn(np.array([x, y]).T), colors='gray', levels=[0], linestyles='dashed')
+  ax.plot([], [], color='gray', linestyle='dashed', label=('Frontière de décision' if label else None))
 
 
 def plot1():
@@ -233,48 +263,107 @@ def plot1():
 
 
 def plot2():
-  x, y = gen_arti(data_type=2, epsilon=0.1)
-  print(x.shape)
-  print(y.shape)
+  fig, axs = plt.subplots(1, 2, figsize=(config.fig_width, 3.2))
 
-  model = Lineaire(eps=1e-3, max_iter=20, projection=proj_poly)
+  # for plot_index, (data_type, proj) in enumerate(itertools.product([1, 2], [proj_biais, proj_poly])):
+  for ax_index, (ax, (data_type, proj)) in enumerate(zip(axs, itertools.product([1, 2], [proj_biais, proj_poly]))):
+    x, y = mltools.gen_arti(data_type=data_type, epsilon=0.1)
+    lim = mltools.get_lim_for_data_type(data_type)
 
-  fig, ax = plt.subplots()
+    model = Lineaire(max_iter=5, projection=proj)
+    model.fit(x, y)
 
-  scores = model.fit(x, y)
-  # print(model.w)
+    # fig, ax = plt.subplots()
 
-  ax.plot(np.arange(1, scores.shape[0]), scores[1:, 0], label='Entraînement')
+    mltools.plot_data(ax, x, y)
+    plot_boundary(ax, model.predict_value, label=(ax_index < 1), x_range=lim, y_range=lim)
 
+    ax.set_xlim(*lim)
+    ax.set_ylim(*lim)
 
-  fig, ax = plt.subplots()
+  fig.legend()
+  fig.subplots_adjust(wspace=0.3, bottom=0.15)
 
-  plot_data(ax, x, y)
+  with (output_path / '5.png').open('wb') as file:
+    fig.savefig(file)
 
-  delta = 0.025
-  xrange = np.arange(-2, 2, delta)
-  yrange = np.arange(-2, 2, delta)
-  X, Y = np.meshgrid(xrange,yrange)
-
-  # F is one side of the equation, G is the other
-  # F = X**2
-  # G = 1- (5*Y/4 - np.sqrt(np.abs(X)))**2
-  # plt.contour((F - G), [0])
-  # plt.show()
-
-  ds = model.projection(np.array([X, Y]).T)
-  dv = np.dot(ds, model.w)
-
-  print(ds.shape)
-  print(dv.shape)
-
-  ax.contour(X, Y, dv, levels=[0], colors='red')
-
-  # print(ds.shape)
-  # print(np.array([xrange, yrange]).shape)
+  print(' + '.join(f'{a}{b}' for a, b in zip(model.w, ['', 'x', 'y', 'x^2', 'xy', 'y^2'])))
 
 
-  plt.show()
+def create_grid(x_range: Sequence[float], y_range: Sequence[float], count: int = 100):
+  # x = np.linspace(x_range[0], x_range[1], count)
+  # y = np.linspace(y_range[0], y_range[1], count)
+  x, y = np.meshgrid(
+    np.linspace(x_range[0], x_range[1], count),
+    np.linspace(y_range[0], y_range[1], count)
+  )
+
+  return np.array([x, y]).transpose((1, 2, 0))
+
+def plot3():
+  for plot_index, (data_type, base, sigma, ext_lim_var) in enumerate([
+    (0, np.array([[0.0, 0.0], [0.5, 0.5]]), 1.0, 1.0),
+    (0, np.array([[1.0, 2.0], [2.0, -1.0]]), 1.0, 1.0),
+    (0, np.array([[0.0, 0.0], [0.5, 0.5]]), 5.0, 5.0),
+    (1, create_grid((-2.0, 2.0), (-2.0, 2.0), 3).reshape(-1, 2), 1.5, 1.5),
+    (1, create_grid((-2.0, 2.0), (-2.0, 2.0), 3).reshape(-1, 2), 0.5, 1.5),
+    # (2, create_grid((-2.0, 2.0), (-2.0, 2.0), 12).reshape(-1, 2), 0.5, 1.5),
+    (2, create_grid((-4.0, 4.0), (-4.0, 4.0), 12).reshape(-1, 2), 0.5, 1.5),
+  ]):
+    x, y = mltools.gen_arti(data_type=data_type, epsilon=(0.005 if data_type == 2 else 0.1))
+    # lim = mltools.get_lim_for_data_type(data_type)
+    lim = -2.5, 2.5
+
+    # model = Lineaire(max_iter=150, projection=lambda x: proj_biais(create_proj_gauss(base, sigma=sigma)(x)))
+    model = Lineaire(max_iter=150, projection=create_proj_gauss(base, sigma=sigma))
+    model.fit(x, y)
+
+    # fig, (ax, _) = plt.subplots(2, 1)
+    fig = plt.figure(figsize=(config.fig_width, 3.2))
+    ax = fig.add_subplot(1, 2, 1)
+
+    mltools.plot_data(ax, x, y)
+    plot_boundary(ax, model.predict_value, x_range=lim, y_range=lim)
+
+    ax.scatter(*base.T, color='C3', label='Base', marker='^')
+
+    ax.set_xlim(*lim)
+    ax.set_ylim(*lim)
+
+    if plot_index < 1:
+      fig.legend()
 
 
-plot2()
+    # fig = plt.figure()
+    ax = fig.add_subplot(1, 2, 2, projection='3d')
+
+    ext_lim = (
+      lim[0] - ext_lim_var,
+      lim[1] + ext_lim_var
+    )
+
+    grid = create_grid(ext_lim, ext_lim, 150)
+    grid_z = model.predict_value(grid)
+
+    grid_z_range = max(
+      abs(grid_z.min()),
+      abs(grid_z.max())
+    )
+
+    if data_type == 2:
+      grid_z_range *= 2.0
+
+    mltools.plot_data_3d(ax, x, y, z=-grid_z_range)
+    ax.plot_surface(grid[..., 0], grid[..., 1], grid_z, edgecolor='royalblue', lw=0.5, rstride=8, cstride=8, alpha=0.3)
+    ax.contour(grid[..., 0], grid[..., 1], grid_z, zdir='z', offset=-grid_z_range, cmap='coolwarm')
+    ax.set(xlim=ext_lim, ylim=ext_lim, zlim=(-grid_z_range, grid_z_range), xlabel='X₁', ylabel='X₂', zlabel='f')
+
+    fig.subplots_adjust(bottom=0.15)
+
+    with (output_path / f'{6 + plot_index}.png').open('wb') as file:
+      fig.savefig(file)
+
+
+
+plot3()
+# plt.show()

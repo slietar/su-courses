@@ -23,3 +23,6 @@ plt.rcParams['legend.framealpha'] = 1.0
 plt.rcParams['legend.loc'] = 'upper right'
 plt.rcParams['legend.fancybox'] = False
 plt.rcParams['legend.edgecolor'] = 'k'
+
+
+fig_width = plt.rcParams['figure.figsize'][0]

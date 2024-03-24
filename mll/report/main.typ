@@ -199,3 +199,85 @@ Les ensembles de test et d'entraînement n'ayant pas la même note moyenne, ils 
   image("../output/tme2/7.png"),
   caption: [Profil de la fonction coût et trajectoire de la descente de gradient]
 )
+
+
+
+= TME 5 – Perceptron et SVMs
+
+== Projections et pénalisation
+
+
+=== Projection avec biais et projection polynomiale de degré 2
+
+On code les fonction ```py proj_biais``` et ```py proj_poly``` :
+
+```py
+def proj_biais(x: np.ndarray, /):
+  return np.c_[x, np.ones((*x.shape[:-1], 1))]
+```
+
+```py
+import itertools
+
+def proj_poly(x: np.ndarray, /):
+  return np.c_[
+    np.ones((*x.shape[:-1], 1)),
+    x,
+    *(x[..., a, None] * x[..., b, None] for a, b in itertools.combinations_with_replacement(range(x.shape[-1]), 2))
+  ]
+```
+
+#figure(
+  image("../output/tme5/5.png"),
+  caption: [Séparation des données avec une projection avec biais et avec une projection polynomiale de degré 2]
+)
+
+L'ajout d'un biais uniquement ne permet pas de séparer les données car celles-ci ne sont pas linéairement séparables, or le modèle reste linéaire. En revanche, la projection polynomiale, et en particulier la composante $x y$, permet de séparer les données. Le modèle pour les données de type 1 est de la forme $0.1 + 10x y = 0$.
+
+
+=== Projection gaussienne
+
+On code la fonction ```py create_proj_gauss``` qui crée une projection gaussienne :
+
+```py
+def create_proj_gauss(base: np.ndarray, sigma: float):
+  def proj_gauss(x: np.ndarray, /):
+    return np.exp(-0.5 * (np.linalg.norm(x[..., None, :] - base, axis=-1) / sigma) ** 2)
+
+  return proj_gauss
+```
+
+Pour les données de type 0, deux points de base bien placés suffisent pour séparer les données. Un seul point de base pourrait même suffire s'il on ajoute un biais.
+
+#figure(
+  image("../output/tme5/6.png"),
+  caption: [Séparation des données de type 0 avec $sigma = 1.0$]
+)
+
+Si la distance des points de base avec les données ne permet pas de classer : [...]
+
+#figure(
+  image("../output/tme5/7.png"),
+  caption: [Séparation des données de type 0 avec $sigma = 1.0$]
+)
+
+Pour les données de type 1 et 2, on peut créer une grille de points de base.
+
+#figure(
+  image("../output/tme5/9.png"),
+  caption: [Séparation des données de type 1 avec $sigma = 1.5$]
+)
+
+Avec un $sigma$ trop élevé, les gaussiennes se chevauchent et il est impossible de séparer les données. Avec un $sigma$ trop faible, les gaussiennes deviennent négligeables dès que l'on s'éloigne des points de base.
+
+#figure(
+  image("../output/tme5/10.png"),
+  caption: [Séparation des données de type 1 avec $sigma = 0.5$]
+)
+
+Le problème de l'échiquier peut être correctement résolu avec une grille de points de base si ceux si sont au moins aussi nombreux que les cases de l'échiquier.
+
+#figure(
+  image("../output/tme5/11.png"),
+  caption: [Séparation des données de type 2 avec $sigma = 1.5$]
+)

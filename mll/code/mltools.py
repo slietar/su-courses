@@ -1,6 +1,5 @@
 from matplotlib.axes import Axes
 import numpy as np
-#from mpl_toolkits.mplot3d import Axes3D
 import matplotlib.pyplot as plt
 from matplotlib import cm
 
@@ -21,6 +20,13 @@ def plot_data(ax: Axes, data,labels=None):
     for i,l in enumerate(sorted(list(set(labels.flatten())))):
         ax.scatter(data[labels==l,0],data[labels==l,1],c=f'C{i}',marker=marks[i])
 
+    ax.set_xlabel('X₁')
+    ax.set_ylabel('X₂')
+
+def plot_data_3d(ax: Axes, x: np.ndarray, y: np.ndarray, z: float):
+    for index, yp in enumerate(sorted(np.unique(y))):
+        ax.scatter(x[y == yp, 0], x[y == yp, 1], z, c=f'C{index}', marker=['.', '+'][index])
+
 def plot_frontiere(data,f,step=20):
     """ Trace un graphe de la frontiere de decision de f
     :param data: donnees
@@ -31,7 +37,7 @@ def plot_frontiere(data,f,step=20):
     grid,x,y=make_grid(data=data,step=step)
     plt.contourf(x,y,f(grid).reshape(x.shape),colors=('gray','blue'),levels=[-1,0,1])
 
-def make_grid(data=None,xmin=-5,xmax=5,ymin=-5,ymax=5,step=20):
+def make_grid(data=None,xmin: float = -5,xmax: float = 5,ymin: float = -5,ymax: float = 5,step=20):
     """ Cree une grille sous forme de matrice 2d de la liste des points
     :param data: pour calcluler les bornes du graphe
     :param xmin: si pas data, alors bornes du graphe
@@ -84,3 +90,12 @@ def gen_arti(centerx=1,centery=1,sigma=0.1,nbex=1000,data_type=0,epsilon=0.02):
     data=data[idx,:]
     y=y[idx]
     return data, y
+
+def get_lim_for_data_type(data_type: int):
+    match data_type:
+        case 0 | 1:
+            return -2.5, 2.5
+        case 2:
+            return -4.5, 4.5
+        case _:
+            raise RuntimeError
