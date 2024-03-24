@@ -6,6 +6,15 @@
 #show heading: set text(font: "Helvetica Now Display")
 #show raw: set text(font: "Menlo")
 
+#show figure.caption: it => [
+  #strong[
+    #it.supplement
+    #context it.counter.display(it.numbering)
+  ]
+  ~
+  #context it.body
+]
+
 #set page(
   margin: (x: 72pt, y: 72pt),
   numbering: "1"
@@ -22,7 +31,7 @@ Dans la classe `Density`, on explicite le fait que la classe soit abstraite, on 
 
 Le score est calculé comme $sum_(i) log(y_i)$. L'ajout de $10^(-10)$ aux prédictions permet d'éviter que les valeurs nulles ne causent un score infini.
 
-```python
+```py
 from abc import ABC, abstractmethod
 
 class Density(ABC):
@@ -49,9 +58,9 @@ class Density(ABC):
 
 == Méthode par histogramme
 
-On utilise #link("https://numpy.org/doc/stable/reference/generated/numpy.digitize.html")[```python np.digitize()```] pour trouver les bins auxquelles appartiennent les données.
+On utilise #link("https://numpy.org/doc/stable/reference/generated/numpy.digitize.html")[```py np.digitize()```] pour trouver les bins auxquelles appartiennent les données.
 
-```python
+```py
 class Histogramme(Density):
   def __init__(self, steps: int = 10):
     super().__init__()
@@ -90,7 +99,7 @@ On utilise un ensemble de test de 20 % des points et un ensemble d'entraînement
 
 On implémente les noyaux :
 
-```python
+```py
 def kernel_uniform(x: np.ndarray):
   return np.where(np.any(np.abs(x) <= 0.5, axis=-1), 1.0, 0.0)
 
@@ -98,9 +107,9 @@ def kernel_gaussian(x: np.ndarray, d: int = 2):
   return np.exp(-0.5 * (np.linalg.norm(x, axis=-1) ** 2)) / ((2 * np.pi) ** (d * 0.5))
 ```
 
-Et la classe ```python KernelDensity``` :
+Et la classe ```py KernelDensity``` :
 
-```python
+```py
 class KernelDensity(Density):
   def __init__(self, kernel: Optional[Callable[[np.ndarray], np.ndarray]], sigma: float = 0.1):
     super().__init__()
@@ -213,7 +222,7 @@ On code les fonction ```py proj_biais``` et ```py proj_poly``` :
 
 ```py
 def proj_biais(x: np.ndarray, /):
-  return np.c_[x, np.ones((*x.shape[:-1], 1))]
+  return np.c_[np.ones((*x.shape[:-1], 1)), x]
 ```
 
 ```py
@@ -237,14 +246,11 @@ L'ajout d'un biais uniquement ne permet pas de séparer les données car celles-
 
 === Projection gaussienne
 
-On code la fonction ```py create_proj_gauss``` qui crée une projection gaussienne :
+On code la fonction ```py proj_gauss``` :
 
 ```py
-def create_proj_gauss(base: np.ndarray, sigma: float):
-  def proj_gauss(x: np.ndarray, /):
-    return np.exp(-0.5 * (np.linalg.norm(x[..., None, :] - base, axis=-1) / sigma) ** 2)
-
-  return proj_gauss
+def proj_gauss(x: np.ndarray, /, base: np.ndarray, sigma: float):
+  return np.exp(-0.5 * (np.linalg.norm(x[..., None, :] - base, axis=-1) / sigma) ** 2)
 ```
 
 Pour les données de type 0, deux points de base bien placés suffisent pour séparer les données. Un seul point de base pourrait même suffire s'il on ajoute un biais.
@@ -275,9 +281,9 @@ Avec un $sigma$ trop élevé, les gaussiennes se chevauchent et il est impossibl
   caption: [Séparation des données de type 1 avec $sigma = 0.5$]
 )
 
-Le problème de l'échiquier peut être correctement résolu avec une grille de points de base si ceux si sont au moins aussi nombreux que les cases de l'échiquier.
+Le problème de l'échiquier peut être correctement résolu avec une grille de points de base si ceux si sont au moins aussi nombreux que les cases de l'échiquier. Les données sont plus finement intercalées, on utilise donc un sigma plus faible.
 
 #figure(
   image("../output/tme5/11.png"),
-  caption: [Séparation des données de type 2 avec $sigma = 1.5$]
+  caption: [Séparation des données de type 2 avec $sigma = 0.5$]
 )

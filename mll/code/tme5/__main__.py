@@ -1,9 +1,12 @@
+import functools
 import itertools
 import math
+import operator
 import sys
 from pathlib import Path
 from typing import Callable, Optional, Sequence
 
+from matplotlib.colors import LogNorm
 import numpy as np
 from matplotlib import pyplot as plt
 from matplotlib.axes import Axes
@@ -13,10 +16,23 @@ from .. import config, mltools
 
 
 def perceptron_loss(w: np.ndarray, x: np.ndarray, y: np.ndarray):
-  return np.minimum(-y * np.dot(x, w), 0).sum()
+  return np.maximum(-y * np.dot(x, w), 0).sum()
 
 def perceptron_grad(w: np.ndarray, x: np.ndarray, y: np.ndarray):
-  return (-y * x.T * (y * np.dot(x, w) <= 0)).sum(axis=1)
+  return (-y * x.T * (-y * np.dot(x, w) >= 0)).sum(axis=1)
+
+
+def hinge_loss(w: np.ndarray, x: np.ndarray, y: np.ndarray, *, alpha: float, lambda_: float):
+  return np.maximum(alpha - y * np.dot(x, w), 0).sum() + lambda_ * np.dot(w, w).sum()
+
+def hinge_loss_grad(w: np.ndarray, x: np.ndarray, y: np.ndarray, *, alpha: float, lambda_: float):
+  # print(x.shape)
+  # print(y.shape)
+  # print(w.shape)
+  # print((w * x).sum(axis=1).shape)
+  # return np.where(alpha - y * (w * x).sum(axis=1) > 0, -y[:, None] * x, 0).sum(axis=1) # + 2 * lambda_ * w
+
+  return (-y * x.T * ((alpha - y * np.dot(x, w)) >= 0)).sum(axis=1) + 2.0 * lambda_ * w
 
 
 def proj_poly(x: np.ndarray, /):
@@ -27,16 +43,13 @@ def proj_poly(x: np.ndarray, /):
   ]
 
 def proj_biais(x: np.ndarray, /):
-  return np.c_[x, np.ones((*x.shape[:-1], 1))]
+  return np.c_[np.ones((*x.shape[:-1], 1)), x]
 
 def proj_identity(x: np.ndarray, /):
   return x
 
-def create_proj_gauss(base: np.ndarray, sigma: float):
-  def proj_gauss(x: np.ndarray, /):
-    return np.exp(-0.5 * (np.linalg.norm(x[..., None, :] - base, axis=-1) / sigma) ** 2)
-
-  return proj_gauss
+def proj_gauss(x: np.ndarray, /, *, base: np.ndarray, sigma: float):
+  return np.exp(-0.5 * (np.linalg.norm(x[..., None, :] - base, axis=-1) / sigma) ** 2)
 
 
 class Lineaire:
@@ -62,7 +75,7 @@ class Lineaire:
     px = self.projection(x)
 
     self.w = np.zeros(px.shape[1])
-    # self.w = np.random.uniform(-1.0, 1.0, x.shape[1])
+    # self.w = np.random.uniform(-1.0, 1.0, px.shape[1])
     # print(self.loss(w, x, y))
 
     test_px = self.projection(test_x) if (test_x is not None) else None
@@ -307,15 +320,15 @@ def plot3():
     (0, np.array([[0.0, 0.0], [0.5, 0.5]]), 5.0, 5.0),
     (1, create_grid((-2.0, 2.0), (-2.0, 2.0), 3).reshape(-1, 2), 1.5, 1.5),
     (1, create_grid((-2.0, 2.0), (-2.0, 2.0), 3).reshape(-1, 2), 0.5, 1.5),
-    # (2, create_grid((-2.0, 2.0), (-2.0, 2.0), 12).reshape(-1, 2), 0.5, 1.5),
     (2, create_grid((-4.0, 4.0), (-4.0, 4.0), 12).reshape(-1, 2), 0.5, 1.5),
+    # (2, create_grid((-2.0, 2.0), (-2.0, 2.0), 12).reshape(-1, 2), 0.5, 1.5),
   ]):
     x, y = mltools.gen_arti(data_type=data_type, epsilon=(0.005 if data_type == 2 else 0.1))
     # lim = mltools.get_lim_for_data_type(data_type)
     lim = -2.5, 2.5
 
     # model = Lineaire(max_iter=150, projection=lambda x: proj_biais(create_proj_gauss(base, sigma=sigma)(x)))
-    model = Lineaire(max_iter=150, projection=create_proj_gauss(base, sigma=sigma))
+    model = Lineaire(max_iter=150, projection=functools.partial(proj_gauss, base=base, sigma=sigma))
     model.fit(x, y)
 
     # fig, (ax, _) = plt.subplots(2, 1)
@@ -364,6 +377,214 @@ def plot3():
       fig.savefig(file)
 
 
+def plot4():
+  x, y = mltools.gen_arti(data_type=2, epsilon=0.005)
+  lim = mltools.get_lim_for_data_type(2)
+  # lim = -2.5, 2.5
 
-plot3()
-# plt.show()
+  alpha = 10.0
+  lambda_ = 0.5
+
+  base = create_grid((-4.0, 4.0), (-4.0, 4.0), 30).reshape(-1, 2)
+  model = Lineaire(
+    loss=functools.partial(hinge_loss, alpha=alpha, lambda_=lambda_),
+    loss_g=functools.partial(hinge_loss_grad, alpha=alpha, lambda_=lambda_),
+    max_iter=150,
+    projection=functools.partial(proj_gauss, base=base, sigma=0.5)
+  )
+
+  model.fit(x, y)
+
+  # fig, (ax, _) = plt.subplots(2, 1)
+  fig = plt.figure(figsize=(config.fig_width, 3.2))
+  ax = fig.add_subplot(1, 2, 1)
+
+  mltools.plot_data(ax, x, y)
+  plot_boundary(ax, model.predict_value, x_range=lim, y_range=lim)
+
+  # ax.scatter(*base.T, color='C3', label='Base', marker='^')
+
+  ax.set_xlim(*lim)
+  ax.set_ylim(*lim)
+
+
+def plot5():
+  words = [
+    # 'bar',
+    # 'bat',
+    # 'car',
+    # 'cat',
+    # 'catfish',
+    # 'barbara',
+    # 'barb'
+
+    'logarithm',
+    'algorithm',
+    'biorhythm',
+    'rhythm',
+    'biology',
+    'competing',
+    'computation',
+
+    'abandon',
+    'abandoned',
+    'abandoning',
+    'abandonment',
+    'abandons',
+    'abase',
+    'abased',
+    'abasement',
+    'abasements',
+    'abases',
+    'abash',
+    'abashed',
+    'abashes',
+    'abashing',
+    'abasing',
+    'abate',
+    'abated',
+    'abatement',
+    'abatements',
+    'abater',
+    'abates',
+    'abating',
+    'limit',
+    'limitability',
+    'limitably',
+    'limitation',
+    'limitations',
+    'limited',
+    'limiter',
+    'limiters',
+    'limiting',
+    'limitless',
+    'limits',
+    'limousine',
+    'limp',
+    'limped',
+    'limping',
+    'limply',
+    'limpness',
+    'limps',
+  ]
+
+  def comb(word: str, k: int, *, _add_offset: bool = False):
+    if k == 1:
+      return { tuple[str, ...]((letter,)): [(letter_index if _add_offset else 0) + 1] for letter_index, letter in enumerate(word) }
+
+    result = dict[tuple[str, ...], list[int]]()
+
+    for letter_index, letter in enumerate(word):
+      # print('>', comb(word[letter_index:], k - 1))
+
+      for subword, spans in comb(word[(letter_index + 1):], k - 1, _add_offset=True).items():
+        result.setdefault((letter, *subword), []).extend([span + 1 for span in spans])
+
+      # result |= { (letter, k): v for k, v in comb(word[1:], k - 1).items() }
+
+    return result
+
+  # print(comb('bar', 1, _add_offset=True))
+  # print(comb('bat', 2, _add_offset=False))
+
+  lambda_ = 0.8
+
+  words_comb = [{ subword: sum(lambda_ ** span for span in spans) for subword, spans in comb(word, 2).items() } for word in words]
+  all_subwords = list(functools.reduce(operator.or_, [set(word_comb.keys()) for word_comb in words_comb], set()))
+
+  values = np.zeros((len(words), len(all_subwords)))
+
+  for word_index, word_comb in enumerate(words_comb):
+    for subword, value in word_comb.items():
+      values[word_index, all_subwords.index(subword)] = value
+
+  import pandas as pd
+
+  print('SUBWORDS')
+  print(pd.DataFrame(values, columns=[''.join(subword) for subword in all_subwords], index=words))
+
+
+  print(values.shape)
+  a = (values ** 2).sum(axis=1)
+  # print(np.sqrt(a[None, :] * a[:, None]).shape)
+
+  similarity = (values[None, :, :] * values[:, None, :]).sum(axis=2) / np.sqrt(a[None, :] * a[:, None])
+
+  print('SIMILARITY')
+  print(pd.DataFrame(similarity, columns=words, index=words))
+
+  from sklearn.manifold import MDS
+
+  embedding = MDS(dissimilarity='precomputed', metric=False, normalized_stress=True, n_init=100)
+  ts = embedding.fit_transform(-similarity)
+
+  print('MDS')
+  # print(ts)
+  print(ts.shape)
+
+  # print(embedding.dissimilarity_matrix_)
+  # print(embedding.stress_)
+
+  fig, ax = plt.subplots()
+
+  ax.scatter(*ts.T)
+
+  for i, word in enumerate(words):
+    ax.annotate(word, (ts[i, 0], ts[i, 1]))
+
+
+  fig, ax = plt.subplots()
+
+  # im = ax.imshow(similarity, cmap='viridis')
+  im = ax.imshow(np.maximum(similarity, 0.01), cmap='plasma', norm=LogNorm(vmin=0.01, vmax=1))
+  ax.set_xticks(range(len(words)), words, rotation='vertical')
+  ax.set_yticks(range(len(words)), words)
+
+  fig.colorbar(im, ax=ax)
+
+  # import networkx as nx
+  # import string
+
+  # dt = [('len', float)]
+  # A = values.view(dt)
+
+  # G = nx.from_numpy_matrix(A)
+  # G = nx.relabel_nodes(G, dict(zip(range(len(G.nodes())),string.ascii_uppercase)))
+
+  # G = nx.to_agraph(G)
+
+  # G.node_attr.update(color="red", style="filled")
+  # G.edge_attr.update(color="blue", width="2.0")
+
+  # G.draw('distances.png', format='png', prog='neato')
+
+
+  # dist = np.empty(
+  #   (len(words), len(words)),
+  #   dtype=float
+  # )
+
+  # for a, b in itertools.combinations(range(len(words)), 2):
+  #   # print(words_comb[a], words_comb[b])
+  #   subwords = words_comb[a].keys() & words_comb[b].keys()
+
+  #   dist[a, b] = dist[b, a] = 3.0
+  #   # dist[a, b] = dist[b, a] = np.linalg.norm(np.array([len(set(words[a]) & set(words[b])), len(set(words[a]) | set(words[b]))]) / len(words[a])
+
+  # print(dist)
+
+  # x = {}
+
+  # for letter_index, letter in enumerate(words[0]):
+  #   pass
+
+  # subwords = set([subword for word in words for subword in itertools.combinations(word, 2)])
+  # print(subwords)
+
+
+
+# plot1()
+# plot2()
+# plot3()
+plot5()
+plt.show()
