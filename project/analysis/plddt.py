@@ -1,7 +1,5 @@
 import pickle
-from xml import dom
 
-from matplotlib import pyplot as plt
 import pandas as pd
 
 from . import data, shared

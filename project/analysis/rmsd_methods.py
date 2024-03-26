@@ -1,42 +1,52 @@
-from matplotlib import pyplot as plt
 import numpy as np
+from matplotlib import pyplot as plt
 from pymol import cmd
 
 from . import data, shared
 from .pymol import PymolAlignment
 
 
-alignment_data = np.empty((len(data.domains), 3))
+labels = [
+  'AlphaFold global',
+  'AlphaFold pruned',
+  'ESMFold pruned',
+  'ESMFold isolated'
+]
 
-cmd.load(shared.root_path / 'drive/FBN1_AlphaFold.pdb', '0')
+alignments = [
+  (0, 1),
+  (1, 2),
+  (2, 3)
+]
+
+rmsds = np.empty((len(data.domains), len(alignments)))
+
+cmd.load(shared.output_path / 'structures/alphafold-global/structure.pdb', '0')
 
 for domain_index in range(len(data.domains)):
-  cmd.load(shared.root_path / f'esmfold-output/isolated/domains/{domain_index:04}/structure.pdb', '1')
-  cmd.load(shared.root_path / f'esmfold-pruning/output/{domain_index:04}.pdb', '2')
+  cmd.load(shared.output_path / f'structures/alphafold-pruned/{domain_index:04}.pdb', '1')
+  cmd.load(shared.output_path / f'structures/esmfold-pruned/{domain_index:04}.pdb', '2')
+  cmd.load(shared.output_path / f'structures/esmfold-isolated/{domain_index:04}.pdb', '3')
 
-  alignment_data[domain_index, 0] = PymolAlignment(cmd.align('0', '1', cutoff=1000)).rmsd
-  alignment_data[domain_index, 1] = PymolAlignment(cmd.align('0', '2', cutoff=1000)).rmsd
-  alignment_data[domain_index, 2] = PymolAlignment(cmd.align('1', '2', cutoff=1000)).rmsd
+  for alignment_index, (a, b) in enumerate(alignments):
+    rmsds[domain_index, alignment_index] = PymolAlignment(cmd.align(f'%{a}', f'%{b}', cutoff=1000, transform=0)).rmsd
 
   cmd.delete('1')
   cmd.delete('2')
+  cmd.delete('3')
 
 
 fig, ax = plt.subplots(figsize=(12, 6))
 
-im = ax.imshow(alignment_data.T, cmap='hot', interpolation='none')
+im = ax.imshow(rmsds.T, cmap='hot', interpolation='none', vmin=0.0, vmax=10.0)
 
 ax.set_yticks(
-  labels=[
-    'AlphaFold global vs ESMFold isolated',
-    'AlphaFold global vs ESMFold contextualized',
-    'ESMFold isolated vs ESMFold contextualized'
-  ],
-  ticks=np.arange(3)
+  labels=[f'{labels[a]} vs {labels[b]}' for a, b in alignments],
+  ticks=np.arange(len(alignments))
 )
 
 ax.set_xticks(
-  labels=[domain.Index for domain in data.domains.itertuples()],
+  labels=[f'{domain.kind} {domain.number}' for domain in data.domains.itertuples()],
   ticks=np.arange(len(data.domains)),
   rotation='vertical'
 )
@@ -50,3 +60,6 @@ fig.subplots_adjust(left=0.3)
 
 with (shared.output_path / 'rmsd_methods.png').open('wb') as file:
   fig.savefig(file, dpi=300)
+
+
+plt.show()
