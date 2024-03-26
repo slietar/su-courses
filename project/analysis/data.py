@@ -34,7 +34,7 @@ if __name__ == '__main__':
     (domains, 'Domains'),
     (exons, 'Exons'),
     (mutations, 'Mutations'),
-    (structures, 'Structures'),
+    (structures, 'Experimental structures'),
     (variants, 'Variants')
   ]:
     print(label.upper())

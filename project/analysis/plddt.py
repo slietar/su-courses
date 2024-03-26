@@ -12,8 +12,8 @@ plddt = dict[str, pd.Series]()
 for name, kind in [
   ('alphafold-global', 'global'),
   ('alphafold-pruned', 'pruned'),
-  ('esmfold-isolated', 'isolated'),
   ('esmfold-pruned', 'pruned'),
+  ('esmfold-isolated', 'isolated'),
 ]:
   with (shared.root_path / 'output/structures' / name / 'plddt.pkl').open('rb') as file:
     raw_plddt = pickle.load(file)

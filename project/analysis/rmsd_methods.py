@@ -3,7 +3,7 @@ import numpy as np
 from pymol import cmd
 
 from . import data, shared
-from .pymol_align import PymolAlignment
+from .pymol import PymolAlignment
 
 
 alignment_data = np.empty((len(data.domains), 3))

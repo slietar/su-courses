@@ -6,7 +6,7 @@ import numpy as np
 from matplotlib import pyplot as plt
 from pymol import cmd
 
-from .pymol_align import PymolAlignment
+from .pymol import PymolAlignment
 
 from . import data, shared
 
