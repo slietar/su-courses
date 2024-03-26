@@ -48,8 +48,6 @@ fn main(
             let dist = length(diff);
 
             if ((dist < settings.cutoff) && (dist > 0.0)) {
-            // if (dist < settings.cutoff) {
-            // if (dist > 0.0) {
                 count += 1u;
                 vec_sum += diff / dist;
             }

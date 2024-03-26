@@ -1,4 +1,4 @@
-use std::{borrow::BorrowMut, error::Error};
+use std::{borrow::BorrowMut, error::Error, path::Path};
 use pdbtbx::{Atom, Residue};
 use wgpu::util::DeviceExt;
 
@@ -51,7 +51,7 @@ enum BufferInfo<'a> {
     Size(usize),
 }
 
-fn write_buffer(device: &wgpu::Device, buffer_source: &mut Option<wgpu::Buffer>, info: BufferInfo, usage: wgpu::BufferUsages) {
+fn write_buffer(device: &wgpu::Device, queue: &wgpu::Queue, buffer_source: &mut Option<wgpu::Buffer>, info: BufferInfo, usage: wgpu::BufferUsages) {
     *buffer_source = None;
 
     let size = match info {
@@ -64,11 +64,11 @@ fn write_buffer(device: &wgpu::Device, buffer_source: &mut Option<wgpu::Buffer>,
         _ => {
             let atoms_buffer = device.create_buffer(&wgpu::BufferDescriptor {
                 label: None,
-                mapped_at_creation: match info {
+                mapped_at_creation: false /* match info {
                     BufferInfo::Data(_) => true,
                     BufferInfo::Size(_) => false,
-                },
-                size: ((size as f32) * 1.5) as u64,
+                } */,
+                size: ((size as f32) * 1.0) as u64,
                 usage,
             });
 
@@ -78,12 +78,14 @@ fn write_buffer(device: &wgpu::Device, buffer_source: &mut Option<wgpu::Buffer>,
     };
 
     if let BufferInfo::Data(data) = info {
-        {
-            let mut buffer_mut = buffer.slice(..).get_mapped_range_mut();
-            buffer_mut[..data.len()].copy_from_slice(data);
-        }
+        queue.write_buffer(&buffer, 0, data);
 
-        buffer.unmap();
+        // {
+        //     let mut buffer_mut = buffer.slice(..).get_mapped_range_mut();
+        //     buffer_mut[..data.len()].copy_from_slice(data);
+        // }
+
+        // buffer.unmap();
     }
 
 }
@@ -106,7 +108,7 @@ struct Engine {
 }
 
 impl Engine {
-    async fn new() -> Result<Self, Box<dyn Error>> {
+    pub async fn new() -> Result<Self, Box<dyn Error>> {
         // Request instance and adapter
 
         let instance = wgpu::Instance::default();
@@ -172,7 +174,7 @@ impl Engine {
             label: Some("Settings buffer"),
             mapped_at_creation: false,
             size: 8,
-            usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::MAP_WRITE,
+            usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST,
         });
 
         // let output_buffer = device.create_buffer(&wgpu::BufferDescriptor {
@@ -206,7 +208,7 @@ impl Engine {
         })
     }
 
-    fn set_atoms(&mut self, residues: Vec<&Residue>) {
+    pub fn set_residues(&mut self, residues: &[&Residue]) {
         let atom_count: usize = residues.iter().map(|residue| residue.atom_count()).sum();
 
         let mut atoms_data = vec![0f32; atom_count * 4];
@@ -226,10 +228,10 @@ impl Engine {
             }
         }
 
-        write_buffer(&self.device, &mut self.atoms_buffer, BufferInfo::Data(bytemuck::cast_slice(&atoms_data)), wgpu::BufferUsages::STORAGE);
-        write_buffer(&self.device, &mut self.residues_buffer, BufferInfo::Data(bytemuck::cast_slice(&atoms_data)), wgpu::BufferUsages::STORAGE);
-        write_buffer(&self.device, &mut self.output_buffer, BufferInfo::Size(residues.len() * 4), wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_SRC);
-        write_buffer(&self.device, &mut self.read_buffer, BufferInfo::Size(residues.len() * 4), wgpu::BufferUsages::MAP_READ | wgpu::BufferUsages::COPY_DST);
+        write_buffer(&self.device, &self.queue, &mut self.atoms_buffer, BufferInfo::Data(bytemuck::cast_slice(&atoms_data)), wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST);
+        write_buffer(&self.device, &self.queue, &mut self.residues_buffer, BufferInfo::Data(bytemuck::cast_slice(&residues_data)), wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST);
+        write_buffer(&self.device, &self.queue, &mut self.output_buffer, BufferInfo::Size(residues.len() * 4), wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_SRC);
+        write_buffer(&self.device, &self.queue, &mut self.read_buffer, BufferInfo::Size(residues.len() * 4), wgpu::BufferUsages::MAP_READ | wgpu::BufferUsages::COPY_DST);
 
         self.atom_count = Some(atom_count);
         self.residue_count = Some(residues.len());
@@ -267,34 +269,15 @@ impl Engine {
         // })); */
     }
 
-    async fn run(&mut self, cutoff_distance: f32) -> Result<(), Box<dyn Error>> {
+    pub async fn run(&mut self, cutoff_distance: f64) -> Result<Vec<f32>, Box<dyn Error>> {
         // Write settings
 
         let settings_data = [
             &(self.atom_count.unwrap() as u32).to_le_bytes()[..],
-            &cutoff_distance.to_le_bytes(),
+            &(cutoff_distance as f32).to_le_bytes(),
         ].concat();
 
-        // write_buffer(&self.device, Some(&mut self.settings_buffer), BufferInfo::Data(&settings_data));
-
-        {
-            let (sender, receiver) = flume::bounded(1);
-
-            // buffer_slice.map_async(wgpu::MapMode::Read, move |v| sender.send(v).unwrap());
-
-            self.settings_buffer.slice(..).map_async(wgpu::MapMode::Write, move |v| {
-                sender.send(v).unwrap();
-            });
-
-            self.device.poll(wgpu::Maintain::wait()).panic_on_timeout();
-
-            if let Ok(Ok(())) = receiver.recv_async().await {
-                let mut buffer_mut = self.settings_buffer.slice(..).get_mapped_range_mut();
-                buffer_mut[..settings_data.len()].copy_from_slice(&settings_data);
-            }
-        }
-
-        self.settings_buffer.unmap();
+        self.queue.write_buffer(&self.settings_buffer, 0, &settings_data);
 
 
         // Create bind group
@@ -359,6 +342,9 @@ impl Engine {
             let data = buffer_slice.get_mapped_range();
             let cast_data = bytemuck::cast_slice::<u8, f32>(&data);
 
+            let result = cast_data.to_vec();
+            drop(data);
+
             // eprintln!("{:?}", &cast_data[0..12]);
 
             // let mut output_structure = structure.clone();
@@ -382,36 +368,66 @@ impl Engine {
             // pdbtbx::save(&output_structure, "output.pdb", pdbtbx::StrictnessLevel::Medium)
             //     .map_err(|e| format!("Failed to save PDB: {:?}", e))?;
 
-            drop(data);
+            // drop(data);
             read_buffer.unmap();
-        } else {
-            panic!("Failed to run compute on gpu!");
-        }
 
-        Ok(())
+            Ok(result)
+        } else {
+            Err("Failed to run compute on gpu!")?
+        }
     }
 }
 
 
-async fn run() {
-    let mut engine = Engine::new().await.unwrap();
+async fn run() -> Result<(), Box<dyn Error>> {
+    let mut engine = Engine::new().await?;
 
-    let filename = "2h1l.pdb";
-    let (structure, _) = pdbtbx::open(filename, pdbtbx::StrictnessLevel::Loose)
-        .map_err(|e| format!("Failed to open PDB: {:?}", e))
-        .unwrap();
+    for filename in [
+        "../drive/FBN1_AlphaFold.pdb",
+        // "2h1l.pdb",
+        // "5j7o.pdb"
+    ] {
+        let path = Path::new(filename);
+        let (mut structure, _) = pdbtbx::open(filename, pdbtbx::StrictnessLevel::Loose)
+            .map_err(|e| format!("Failed to open PDB: {:?}", e))
+            .unwrap();
 
-    let cutoff = 20.0f32;
+        let residues = structure.residues().collect::<Vec<_>>();
+        engine.set_residues(&residues);
 
-    let residues = structure.residues().collect::<Vec<_>>();
-    engine.set_atoms(residues);
+        for cutoff in [
+            10.0,
+            20.0,
+            30.0,
+            40.0,
+            50.0,
+            60.0,
+            70.0,
+            80.0,
+            90.0,
+            100.0,
+        ] {
+            eprintln!("Processing {} with cutoff {} Å", filename, cutoff);
 
-    // let residues = structure.residues().collect::<Vec<_>>();
-    // engine.set_atoms(residues);
+            let cv = engine.run(cutoff).await?;
 
-    engine.run(cutoff).await.unwrap();
-    // engine.run(cutoff).await.unwrap();
 
+            // let mut output_structure = structure.clone();
+
+            for (residue_index, residue) in structure.residues_mut().enumerate() {
+                for atom in residue.atoms_mut() {
+                    atom.set_b_factor(cv[residue_index] as f64)?;
+                }
+            }
+
+            pdbtbx::save(&structure, format!("output/{}_{}.pdb", path.file_stem().unwrap().to_str().unwrap(), (cutoff * 10.0) as u32), pdbtbx::StrictnessLevel::Medium)
+                .map_err(|e| format!("Failed to save PDB: {:?}", e))?;
+        }
+    }
+
+    // eprintln!("{:?}", &res[0..10]);
+
+    Ok(())
 }
 
 fn main() {
