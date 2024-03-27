@@ -27,7 +27,7 @@ struct UniProtPosition {
     value: usize,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Deserialize, Serialize)]
 pub struct Domain {
     #[serde(flatten)]
     pub kind: DomainKind,
@@ -39,7 +39,7 @@ pub struct Domain {
     pub end_position: usize,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Deserialize, Serialize)]
 #[serde(tag = "kind")]
 pub enum DomainKind {
     #[serde(rename = "EGF")]

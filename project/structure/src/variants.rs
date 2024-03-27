@@ -61,7 +61,7 @@ enum RawClinicalEffect {
 }
 
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Deserialize, Serialize)]
 pub struct Variant {
     frequency: f32,
     genomic_position: usize,

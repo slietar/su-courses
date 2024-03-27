@@ -21,7 +21,7 @@ struct RawMutation {
     residue: String,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Deserialize, Serialize)]
 pub struct Mutation {
     effects: u32,
     genomic_position: usize, // Starting at 1

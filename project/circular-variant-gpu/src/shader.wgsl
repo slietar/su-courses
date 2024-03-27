@@ -6,6 +6,7 @@ struct Residue {
 struct Settings {
     atom_count: u32,
     cutoff: f32,
+    residue_start: u32,
 }
 
 
@@ -34,7 +35,7 @@ fn main(
     @builtin(local_invocation_id) local_id: vec3<u32>,
     @builtin(workgroup_id) workgroup_id: vec3<u32>,
 ) {
-    let residue = residues[workgroup_id.x];
+    let residue = residues[settings.residue_start + workgroup_id.x];
 
     if (local_id.x < residue.atom_count) {
         let current_atom = atoms[residue.atom_offset + local_id.x];

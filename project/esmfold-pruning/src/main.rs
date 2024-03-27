@@ -1,38 +1,7 @@
 use std::{error::Error, fs::File, path::{Path, PathBuf}};
 
 use pdbtbx::Chain;
-use serde::Deserialize;
 use serde_pickle::SerOptions;
-
-
-#[derive(Debug, Deserialize)]
-pub struct Domain {
-    #[serde(flatten)]
-    pub kind: DomainKind,
-
-    pub name: String,
-    pub number: usize,
-
-    pub start_position: usize,
-    pub end_position: usize,
-}
-
-#[derive(Debug, Deserialize)]
-#[serde(tag = "kind")]
-pub enum DomainKind {
-    #[serde(rename = "EGF")]
-    EGFLike,
-
-    #[serde(rename = "EGFCB")]
-    EGFLikeCalciumBinding,
-
-    TB,
-}
-
-#[derive(Debug, Deserialize)]
-struct Output {
-    domains: Vec<Domain>,
-}
 
 
 #[derive(Debug)]
@@ -53,11 +22,7 @@ enum SpecKind {
 
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let data: Output = {
-        let bytes = std::fs::read("../structure/output/data.pkl")?;
-        serde_pickle::from_slice(&bytes, Default::default())?
-    };
-
+    let data = project_preprocessing::deserialize("../structure/output/data.pkl")?;
     let root_output_path = Path::new("../output/structures");
 
     for spec in [

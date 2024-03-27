@@ -50,7 +50,7 @@ pub struct ProteinData {
     pub sequence: Vec<char>,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Deserialize, Serialize)]
 pub struct Exon {
     pub name: String,
     pub number: usize,

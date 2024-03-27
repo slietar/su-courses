@@ -5,24 +5,10 @@ use serde_pickle::SerOptions;
 mod features;
 mod gn;
 mod mutations;
+mod output;
 mod plddt;
 mod structures;
 mod variants;
-
-
-#[derive(Debug, Serialize)]
-struct Output {
-    domain_kinds: &'static [&'static str],
-    domains: Vec<self::features::Domain>,
-    effect_labels: &'static [&'static str],
-    exons: Vec<self::gn::Exon>,
-    mutations: Vec<self::mutations::Mutation>,
-    pathogenicity_labels: Vec<&'static str>,
-    plddt: Vec<f64>,
-    sequence: Vec<char>,
-    structures: Vec<self::structures::ExperimentalStructure>,
-    variants: Vec<self::variants::Variant>,
-}
 
 
 fn main() -> Result<(), Box<dyn Error>> {
@@ -34,13 +20,13 @@ fn main() -> Result<(), Box<dyn Error>> {
     let variant_data = self::variants::process_variants("./data/variants.csv")?;
 
     let mut writer = File::create("./output/data.pkl")?;
-    let output = Output {
-        domain_kinds: self::features::DOMAIN_KINDS,
+    let output = self::output::Output {
+        domain_kinds: self::features::DOMAIN_KINDS.map(|kind| kind.to_string()).to_vec(),
         domains,
-        effect_labels: self::mutations::EFFECT_LABELS,
+        effect_labels: self::mutations::EFFECT_LABELS.map(|label| label.to_string()).to_vec(),
         exons: protein_data.exons,
         mutations,
-        pathogenicity_labels: variant_data.pathogenicity_labels,
+        pathogenicity_labels: variant_data.pathogenicity_labels.iter().map(|kind| kind.to_string()).collect::<Vec<_>>(),
         plddt,
         sequence: protein_data.sequence,
         structures,
