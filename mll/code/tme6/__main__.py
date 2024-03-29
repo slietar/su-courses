@@ -1,13 +1,17 @@
-import math
+from dataclasses import dataclass
 from pathlib import Path
-from typing import Callable, Optional
+import sys
+from typing import Callable
 
+from matplotlib.patches import Rectangle
+import numpy as np
 from matplotlib import pyplot as plt
 from matplotlib.colors import Normalize
-import numpy as np
 from sklearn.tree import DecisionTreeClassifier
 
 from .. import config, mltools
+from .utils import filter_axes, plot_tree
+
 
 class BoostingClassifier:
   def __init__(self, create_classifier: Callable[[], DecisionTreeClassifier], classifier_count: int):
@@ -56,6 +60,33 @@ output_path.mkdir(exist_ok=True, parents=True)
 
 
 def plot1():
+  from sklearn.ensemble import RandomForestClassifier
+
+  x, y = mltools.gen_arti(data_type=1)
+  lim = mltools.get_lim_for_data_type(data_type=1)
+
+  model = RandomForestClassifier(max_depth=10, n_estimators=10)
+  model.fit(x, y)
+
+  fig, axs = plt.subplots(3, 3)
+
+  displayed_estimator_count = min(len(model.estimators_), axs.size)
+
+  estimator = model.estimators_[0]
+
+  for estimator, ax in zip(model.estimators_[:displayed_estimator_count], axs.flat):
+    ax.set_xlim(*lim)
+    ax.set_ylim(*lim)
+
+    plot_tree(ax, estimator.tree_, range_x=lim, range_y=lim)
+    mltools.plot_data(ax, x, y)
+
+  filter_axes(axs)
+
+
+def plot2():
+  np.random.seed(1)
+
   x, y = mltools.gen_arti(data_type=1)
 
   m = (x[:, 0] > 0) | (x[:, 1] > 0)
@@ -64,19 +95,17 @@ def plot1():
 
 
   model = BoostingClassifier(
-    classifier_count=3,
-    create_classifier=(lambda: DecisionTreeClassifier(max_depth=1))
+    classifier_count=16,
+    create_classifier=(lambda: DecisionTreeClassifier(max_depth=3))
   )
 
   sample_weights, model_predictions, es, zs = model.fit(x, y)
 
-  # column_count = 3
+  displayed_classifier_count = 3
   markers = ['.', '+']
-  fig, axs = plt.subplots(len(model.classifiers), 2, figsize=(config.fig_width, 7.0))
-  # fig, axs = plt.subplots(math.ceil(len(model.classifiers) / column_count), column_count)
+  fig, axs = plt.subplots(displayed_classifier_count, 2, figsize=(config.fig_width, 7.0))
 
-  # for classifier_index, (classifier, ax) in enumerate(zip(model.classifiers, axs.ravel())):
-  for classifier_index, classifier in enumerate(model.classifiers):
+  for classifier_index, classifier in enumerate(model.classifiers[:displayed_classifier_count]):
     ax = axs[classifier_index, 0]
 
     ax.set_xlim(-2.5, 2.5)
@@ -108,7 +137,7 @@ def plot1():
       ax.scatter(
         x[mask, 0],
         x[mask, 1],
-        alpha=(norm(sample_weights[mask, classifier_index]) * 0.95 + 0.05),
+        alpha=((norm(sample_weights[mask, classifier_index]) * 0.9 + 0.1) if classifier_index > 0 else 1.0),
         c=np.array(['r', 'g'])[((classifier.predict(x[mask, :]) * y[mask]) > 0).astype(int)],
         marker=markers[cl_index]
       )
@@ -140,22 +169,34 @@ def plot1():
   for ax in axs[:, 1].ravel():
     ax.tick_params(axis='y', left=False, labelleft=False)
 
-  # mltools.plot_frontiere(x, classifier.predict, ax=axs[classifier_index // column_count, classifier_index % column_count])
-  # print((model.predict(x) * y > 0).sum() / len(y))
+  for ax in axs[-1, :].ravel():
+    ax.set_xlabel('X₁')
 
-  fig.subplots_adjust(bottom=0.05, top=0.95)
+  for ax in axs[:, 0].ravel():
+    ax.set_ylabel('X₂')
+
+  fig.subplots_adjust(bottom=0.08, top=0.95)
 
   with (output_path / '1.png').open('wb') as file:
     plt.savefig(file)
 
 
-  fig, ax = plt.subplots()
+  fig, ax1 = plt.subplots()
 
-  ax.plot(es, label=r'$\epsilon_t$')
-  ax.plot(zs, label=r'$Z$')
-  ax.legend()
+  ax2 = ax1.twinx()
 
-# print(axs.shape)
+  l1 = ax1.plot(np.arange(len(model.classifiers)) + 1, es, label=r'$\epsilon_t$')
+  l2 = ax2.plot(np.arange(len(model.classifiers)) + 1, zs, color='C1', label=r'Z')
+
+  ax1.set_xlabel('Nombre de classifieurs t')
+  ax1.set_ylabel(r'$\epsilon_t$')
+  ax2.set_ylabel('Z')
+
+  lines = l1 + l2
+  ax1.legend(lines, [l.get_label() for l in lines])
+
+  with (output_path / '2.png').open('wb') as file:
+    plt.savefig(file)
 
 plot1()
-# plt.show()
+plt.show()

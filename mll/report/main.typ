@@ -241,7 +241,7 @@ def proj_poly(x: np.ndarray, /):
   caption: [Séparation des données avec une projection avec biais et avec une projection polynomiale de degré 2]
 )
 
-L'ajout d'un biais uniquement ne permet pas de séparer les données car celles-ci ne sont pas linéairement séparables, or le modèle reste linéaire. En revanche, la projection polynomiale, et en particulier la composante $x y$, permet de séparer les données. Le modèle pour les données de type 1 est de la forme $0.1 + 10x y = 0$.
+L'ajout d'un biais uniquement ne permet pas de séparer les données car celles-ci ne sont pas linéairement séparables, or le modèle reste linéaire. En revanche, la projection polynomiale, et en particulier la composante $x_1 x_2$, permet de séparer les données. La frontière de décision du modèle pour les données de type 1 est de la forme $0.1 + 10x_1 x_2 = 0$.
 
 
 === Projection gaussienne
@@ -287,3 +287,25 @@ Le problème de l'échiquier peut être correctement résolu avec une grille de 
   image("../output/tme5/11.png"),
   caption: [Séparation des données de type 2 avec $sigma = 0.5$]
 )
+
+
+
+= TME 6 – Bagging, boosting
+
+== Forêts aléatoires
+
+== Boosting : AdaBoost
+
+Les données de type 0 sont linéairement séparables et le boosting ne n'a pas d'effet puisque la classification réussit en une étape. Sur les données de type 1 et 2, les arbres de décisions échouent à séparer les données car aucune unique frontière de décision ne donne de résultat satisfaisant : on sélectionne toujours la moitié des points d'une classe et la moitié des points de l'autre classe. Pour tester le boosting, on propose d'utiliser les données de type 1 en retirant les points dans l'un des quatre quadrants.
+
+#figure(
+  image("../output/tme6/1.png"),
+  caption: [Classification sur les données de type 1. À gauche, les classifications individuelles avec la frontière de décision en gris. L'opacité correspond aux poids $D_t (i)$ utilisés par le classifieur. Les points en vert sont correctement classés et ceux en rouge mal classés. À droite, la classification en utilisant tous les classifieurs jusqu'à celui donné.]
+)
+
+#figure(
+  image("../output/tme6/2.png"),
+  caption: [Valeurs de $epsilon_t$ et $Z$ associées à la classification sur les données de type 1]
+)
+
+En ajoutant davantage plus que 3 classifieurs sur le même problème, on observe que l'erreur $Z$ continue de diminuer parce que la prédiction devient de plus en plus fiable bien que quasiment tous les points soient déjà bien classés. En revanche, la valeur de $epsilon_t$ ne diminue pas car les classifieurs individuels suivant ne sont pas meilleurs que les premiers étant donnée la distribution des poids.
