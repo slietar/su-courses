@@ -3,10 +3,13 @@ from pathlib import Path
 import sys
 from typing import Callable
 
+from matplotlib.axes import Axes
 from matplotlib.patches import Rectangle
+from matplotlib.ticker import IndexLocator, MaxNLocator
 import numpy as np
 from matplotlib import pyplot as plt
 from matplotlib.colors import Normalize
+from sklearn.ensemble import RandomForestClassifier
 from sklearn.tree import DecisionTreeClassifier
 
 from .. import config, mltools
@@ -85,6 +88,66 @@ def plot1():
 
 
 def plot2():
+  # train_x, train_y = mltools.gen_arti(data_type=2, epsilon=0.005)
+  train_x, train_y = mltools.gen_arti(data_type=1)
+  test_x, test_y = mltools.gen_arti(data_type=1, nbex=500)
+
+  depths = np.arange(1, 10)
+  estimator_counts = np.arange(1, 30)
+  repeat_count = 1
+
+  errors = np.empty((len(depths), len(estimator_counts), repeat_count, 2))
+
+  for depth_index, depth in enumerate(depths):
+    for estimator_count_index, estimator_count in enumerate(estimator_counts):
+      for repeat_index in range(repeat_count):
+        model = RandomForestClassifier(max_depth=depth, n_estimators=estimator_count)
+        model.fit(train_x, train_y)
+
+        errors[depth_index, estimator_count_index, repeat_index, 0] = 1.0 - model.score(train_x, train_y)
+        errors[depth_index, estimator_count_index, repeat_index, 1] = 1.0 - model.score(test_x, test_y)
+
+  fig, axs = plt.subplots(nrows=2)
+  ax: Axes
+
+  for ax_index, ax in enumerate(axs):
+    im = ax.imshow(
+      errors.mean(axis=2)[::-1, :, ax_index],
+      cmap='RdYlBu_r',
+        extent=(
+        estimator_counts[0] - 0.5,
+        estimator_counts[-1] + 0.5,
+        depths[0] - 0.5,
+        depths[-1] + 0.5,
+      ),
+      vmin=0.0,
+      vmax=0.6
+    )
+
+    ax.set_xlabel('Nombre d\'estimateurs')
+    ax.set_title(['Entraînement', 'Test'][ax_index])
+
+    ax.xaxis.set_major_locator(IndexLocator(5, -0.5))
+    ax.yaxis.set_major_locator(IndexLocator(2, -0.5))
+
+    ax.tick_params(bottom=False, left=False)
+
+  full_ax = fig.add_subplot(1, 1, 1, frame_on=False, xticks=[], yticks=[])
+  full_ax.set_ylabel('Profondeur maximale', labelpad=15)
+
+  cbar = fig.colorbar(im, ax=axs)
+
+  cbar.ax.get_yaxis().labelpad = 15
+  cbar.ax.set_ylabel('Erreur', rotation=270)
+
+  filter_axes(axs[:, None])
+
+  with (output_path / '3.png').open('wb') as file:
+    fig.savefig(file)
+
+
+
+def plot3():
   np.random.seed(1)
 
   x, y = mltools.gen_arti(data_type=1)
@@ -198,5 +261,5 @@ def plot2():
   with (output_path / '2.png').open('wb') as file:
     plt.savefig(file)
 
-plot1()
+plot2()
 plt.show()

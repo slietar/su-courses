@@ -294,6 +294,11 @@ Le problème de l'échiquier peut être correctement résolu avec une grille de 
 
 == Forêts aléatoires
 
+#figure(
+  image("../output/tme6/3.png"),
+  caption: [Erreur d'un modèle de forêts aléatoires sur les données de type 1. Chaque combinaison de paramètres est testée 5 fois et c'est l'erreur moyenne qui est rapportée ici.]
+)
+
 == Boosting : AdaBoost
 
 Les données de type 0 sont linéairement séparables et le boosting ne n'a pas d'effet puisque la classification réussit en une étape. Sur les données de type 1 et 2, les arbres de décisions échouent à séparer les données car aucune unique frontière de décision ne donne de résultat satisfaisant : on sélectionne toujours la moitié des points d'une classe et la moitié des points de l'autre classe. Pour tester le boosting, on propose d'utiliser les données de type 1 en retirant les points dans l'un des quatre quadrants.
