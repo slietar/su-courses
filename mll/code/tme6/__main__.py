@@ -1,19 +1,16 @@
-from dataclasses import dataclass
-from pathlib import Path
 import sys
+from pathlib import Path
 from typing import Callable
 
-from matplotlib.axes import Axes
-from matplotlib.patches import Rectangle
-from matplotlib.ticker import IndexLocator, MaxNLocator
 import numpy as np
 from matplotlib import pyplot as plt
+from matplotlib.axes import Axes
 from matplotlib.colors import Normalize
+from matplotlib.ticker import IndexLocator
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.tree import DecisionTreeClassifier
 
-from .. import config, mltools
-from .utils import filter_axes, plot_tree
+from .. import config, mltools, utils
 
 
 class BoostingClassifier:
@@ -63,15 +60,16 @@ output_path.mkdir(exist_ok=True, parents=True)
 
 
 def plot1():
-  from sklearn.ensemble import RandomForestClassifier
+  np.random.seed(0)
 
   x, y = mltools.gen_arti(data_type=1)
   lim = mltools.get_lim_for_data_type(data_type=1)
 
-  model = RandomForestClassifier(max_depth=10, n_estimators=10)
+  model = RandomForestClassifier(max_depth=10, n_estimators=4)
   model.fit(x, y)
 
-  fig, axs = plt.subplots(3, 3)
+  fig, axs = plt.subplots(2, 2)
+  fig.set_figheight(6.0)
 
   displayed_estimator_count = min(len(model.estimators_), axs.size)
 
@@ -81,69 +79,92 @@ def plot1():
     ax.set_xlim(*lim)
     ax.set_ylim(*lim)
 
-    plot_tree(ax, estimator.tree_, range_x=lim, range_y=lim)
+    utils.plot_tree(ax, estimator.tree_, range_x=lim, range_y=lim)
     mltools.plot_data(ax, x, y)
 
-  filter_axes(axs)
+  utils.filter_axes(axs)
+
+  with (output_path / '5.png').open('wb') as file:
+    fig.savefig(file)
+
+
+  fig, ax = plt.subplots()
+
+  utils.plot_boundary_contour(ax, model.predict, x_range=lim, y_range=lim)
+  mltools.plot_data(ax, x, y)
+
+  fig.subplots_adjust(left=0.25, right=0.75)
+
+  with (output_path / '6.png').open('wb') as file:
+    fig.savefig(file)
 
 
 def plot2():
-  # train_x, train_y = mltools.gen_arti(data_type=2, epsilon=0.005)
-  train_x, train_y = mltools.gen_arti(data_type=1)
-  test_x, test_y = mltools.gen_arti(data_type=1, nbex=500)
+  np.random.seed(0)
 
-  depths = np.arange(1, 10)
-  estimator_counts = np.arange(1, 30)
-  repeat_count = 1
+  for fig_index, (gen_params, depths) in enumerate([
+    (dict(data_type=1), np.arange(1, 10)),
+    (dict(data_type=2, epsilon=0.005), np.arange(1, 30))
+  ]):
+    train_x, train_y = mltools.gen_arti(**gen_params)
+    test_x, test_y = mltools.gen_arti(**gen_params, nbex=500)
 
-  errors = np.empty((len(depths), len(estimator_counts), repeat_count, 2))
+    estimator_counts = np.arange(1, 30)
+    repeat_count = 1
 
-  for depth_index, depth in enumerate(depths):
-    for estimator_count_index, estimator_count in enumerate(estimator_counts):
-      for repeat_index in range(repeat_count):
-        model = RandomForestClassifier(max_depth=depth, n_estimators=estimator_count)
-        model.fit(train_x, train_y)
+    errors = np.empty((len(depths), len(estimator_counts), repeat_count, 2))
 
-        errors[depth_index, estimator_count_index, repeat_index, 0] = 1.0 - model.score(train_x, train_y)
-        errors[depth_index, estimator_count_index, repeat_index, 1] = 1.0 - model.score(test_x, test_y)
+    for depth_index, depth in enumerate(depths):
+      for estimator_count_index, estimator_count in enumerate(estimator_counts):
+        for repeat_index in range(repeat_count):
+          model = RandomForestClassifier(max_depth=depth, n_estimators=estimator_count)
+          model.fit(train_x, train_y)
 
-  fig, axs = plt.subplots(nrows=2)
-  ax: Axes
+          errors[depth_index, estimator_count_index, repeat_index, 0] = 1.0 - model.score(train_x, train_y)
+          errors[depth_index, estimator_count_index, repeat_index, 1] = 1.0 - model.score(test_x, test_y)
 
-  for ax_index, ax in enumerate(axs):
-    im = ax.imshow(
-      errors.mean(axis=2)[::-1, :, ax_index],
-      cmap='RdYlBu_r',
-        extent=(
-        estimator_counts[0] - 0.5,
-        estimator_counts[-1] + 0.5,
-        depths[0] - 0.5,
-        depths[-1] + 0.5,
-      ),
-      vmin=0.0,
-      vmax=0.6
-    )
+    fig, axs = plt.subplots(nrows=2, squeeze=False) if fig_index == 0 else plt.subplots(ncols=2, squeeze=False)
+    ax: Axes
 
-    ax.set_xlabel('Nombre d\'estimateurs')
-    ax.set_title(['Entraînement', 'Test'][ax_index])
+    if fig_index == 1:
+      fig.set_figheight(2.8)
 
-    ax.xaxis.set_major_locator(IndexLocator(5, -0.5))
-    ax.yaxis.set_major_locator(IndexLocator(2, -0.5))
+    for ax_index, ax in enumerate(axs.flat):
+      im = ax.imshow(
+        errors.mean(axis=2)[::-1, :, ax_index],
+        aspect='equal',
+        cmap='RdYlBu_r',
+          extent=(
+          estimator_counts[0] - 0.5,
+          estimator_counts[-1] + 0.5,
+          depths[0] - 0.5,
+          depths[-1] + 0.5,
+        ),
+        vmin=0.0,
+        vmax=0.6
+      )
 
-    ax.tick_params(bottom=False, left=False)
+      ax.set_title(['Entraînement', 'Test'][ax_index])
 
-  full_ax = fig.add_subplot(1, 1, 1, frame_on=False, xticks=[], yticks=[])
-  full_ax.set_ylabel('Profondeur maximale', labelpad=15)
+      ax.xaxis.set_major_locator(IndexLocator(5, -0.5))
+      ax.yaxis.set_major_locator(IndexLocator(2 if fig_index == 0 else 5, -0.5))
 
-  cbar = fig.colorbar(im, ax=axs)
+      ax.tick_params(bottom=False, left=False)
 
-  cbar.ax.get_yaxis().labelpad = 15
-  cbar.ax.set_ylabel('Erreur', rotation=270)
+    full_ax = fig.add_subplot(1, 1, 1, frame_on=False, xticks=[], yticks=[])
 
-  filter_axes(axs[:, None])
+    full_ax.set_ylabel('Profondeur maximale', labelpad=[15, 20][fig_index])
+    full_ax.set_xlabel('Nombre d\'estimateurs', labelpad=[15, 10][fig_index])
 
-  with (output_path / '3.png').open('wb') as file:
-    fig.savefig(file)
+    cbar = fig.colorbar(im, aspect=[22, 15][fig_index], ax=[*axs.flat, full_ax])
+
+    cbar.ax.get_yaxis().labelpad = 15
+    cbar.ax.set_ylabel('Erreur', rotation=270)
+
+    utils.filter_axes(axs)
+
+    with (output_path / f'{3 + fig_index}.png').open('wb') as file:
+      fig.savefig(file)
 
 
 
@@ -261,5 +282,5 @@ def plot3():
   with (output_path / '2.png').open('wb') as file:
     plt.savefig(file)
 
-plot2()
-plt.show()
+plot1()
+# plt.show()

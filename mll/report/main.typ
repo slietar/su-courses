@@ -294,10 +294,34 @@ Le problème de l'échiquier peut être correctement résolu avec une grille de 
 
 == Forêts aléatoires
 
+Les données de type 0 sont linéairement séparables et un arbre de décision de profondeur 1 suffit pour les séparer. On expérimente sur les données aléatoires de type 1 et 2.
+
 #figure(
   image("../output/tme6/3.png"),
-  caption: [Erreur d'un modèle de forêts aléatoires sur les données de type 1. Chaque combinaison de paramètres est testée 5 fois et c'est l'erreur moyenne qui est rapportée ici.]
+  caption: [Erreur d'un modèle de forêts aléatoires sur les données de type 1. L'erreur rapportée correspond à l'erreur moyenne sur 5 modèles avec des données différentes.]
 )
+
+Sur les donnés de type 1, une profondeur minimale de 3 à 4 niveaux est nécessaire pour classer les données correctement. L'ajout de plusieurs estimateurs permet d'atteindre une erreur faible avec une profondeur moindre, mais l'effet est négligeable passé 10 estimateurs car toutes les données sont correctement classées. Les erreurs d'entraînement et de test ne diffèrent pas car les données sont facilement classifiées.
+
+#figure(
+  image("../output/tme6/5.png"),
+  caption: [Frontière de décision de quatre arbres de décision de profondeur 10]
+)
+
+Individuellement, les arbres de décisions ont tendance à faire du surapprentissage et à parfois faire des prédictions eronnées. Combinés ensemble, ces erreurs s'annulent et la prédiction est plus fiable.
+
+#figure(
+  image("../output/tme6/6.png"),
+  caption: [Frontière de décision de la forêt aléatoire obtenue en combinant les quatre arbres ci-dessus]
+)
+
+#figure(
+  image("../output/tme6/4.png"),
+  caption: [Erreur d'un modèle de forêts aléatoires sur les données de type 2]
+)
+
+Sur les donnés de type 2, la classification requiert sans surprise une profondeur plus importante des arbres pour prendre en compte les détails de l'échiquier. L'ajout d'estimateurs permet de réduire l'erreur d'entraînement ainsi que l'erreur de test, qui reste sinon plus élevée en raison d'un surapprentissage. L'erreur de test est de façon générale plus élevée en raison de la séparation plus ambiguë des deux classes.
+
 
 == Boosting : AdaBoost
 

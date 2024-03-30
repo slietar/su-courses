@@ -1,10 +1,13 @@
 from dataclasses import dataclass
-from typing import Any, Sequence
+from typing import Any, Callable, Sequence
 from matplotlib.axes import Axes
 from matplotlib.patches import Rectangle
 import numpy as np
 # from sklearn.tree import Tree
 
+
+light_blue = (0xb2 / 0xff, 0xb2 / 0xff, 0xff / 0xff)
+light_red = (0xff / 0xff, 0xb2 / 0xff, 0xb2 / 0xff)
 
 @dataclass
 class Range:
@@ -78,7 +81,14 @@ def plot_tree(ax: Axes, tree, *, range_x: tuple[float, float], range_y: tuple[fl
 
   for i, (x1, x2) in enumerate(zip([range_x[0], *splits[0]], [*splits[0], range_x[1]])):
     for j, (y1, y2) in enumerate(zip([range_y[0], *splits[1]], [*splits[1], range_y[1]])):
-      rect = Rectangle([x1, y1], x2 - x1, y2 - y1, alpha=1.0, color=[(0xb2 / 0xff, 0xb2 / 0xff, 0xff / 0xff), (0xff / 0xff, 0xb2 / 0xff, 0xb2 / 0xff)][grid[i, j]], linewidth=None)
+      rect = Rectangle(
+        [x1, y1],
+        x2 - x1,
+        y2 - y1,
+        color=[light_blue, light_red][grid[i, j]],
+        linewidth=None
+      )
+
       ax.add_artist(rect)
 
 
@@ -90,3 +100,24 @@ def filter_axes(axs: np.ndarray, /):
   for ax in axs[:, 1:].flat:
     ax.tick_params(axis='y', left=False, labelleft=False)
     ax.set_ylabel(None)
+
+
+def plot_boundary(ax: Axes, fn: Callable[[np.ndarray], np.ndarray], *, label: bool = True, x_range: tuple[float, float] = (-2, 2), y_range: tuple[float, float] = (-2, 2)):
+  x_values = np.linspace(*x_range, 100)
+  y_values = np.linspace(*y_range, 100)
+
+  x, y = np.meshgrid(x_values, y_values)
+  g = np.c_[x.ravel(), y.ravel()]
+
+  ax.contour(x, y, fn(g).reshape(len(x_values), len(y_values)), colors='gray', levels=[0], linestyles='dashed')
+  ax.plot([], [], color='gray', linestyle='dashed', label=('Frontière de décision' if label else None))
+
+
+def plot_boundary_contour(ax: Axes, fn: Callable[[np.ndarray], np.ndarray], *, label: bool = True, x_range: tuple[float, float] = (-2, 2), y_range: tuple[float, float] = (-2, 2)):
+  x_values = np.linspace(*x_range, 100)
+  y_values = np.linspace(*y_range, 100)
+
+  x, y = np.meshgrid(x_values, y_values)
+  g = np.c_[x.ravel(), y.ravel()]
+
+  ax.contourf(x, y, fn(g).reshape(len(x_values), len(y_values)), colors=[light_blue, light_red], levels=[-2, 0, 2])
