@@ -1,16 +1,14 @@
 import functools
 import itertools
-import math
 import operator
 import sys
 from pathlib import Path
 from typing import Callable, Optional, Sequence
 
-from matplotlib.colors import LogNorm
 import numpy as np
 from matplotlib import pyplot as plt
 from matplotlib.axes import Axes
-from mpl_toolkits.mplot3d import axes3d
+from matplotlib.colors import LogNorm
 
 from .. import config, mltools
 
@@ -160,24 +158,6 @@ def show_usps(ax: Axes, data):
   ax.get_figure().colorbar(im, ax=ax)
 
 
-# x, y = mltools.gen_arti(epsilon=0.5)
-
-# l = Lineaire(max_iter=10)
-# l.fit(x, y)
-# assert l.w is not None
-
-# # print(l.w)
-
-
-# fig, ax = plt.subplots()
-
-# mltools.plot_data(ax, x, y)
-# ax.axline((0.0, 0.0), slope=(-l.w[0] / l.w[1]), color='C2', linestyle='--')
-
-# plt.show()
-
-
-
 output_path = Path('output/tme5')
 output_path.mkdir(exist_ok=True, parents=True)
 
@@ -196,13 +176,13 @@ test_x, test_y = load_usps(data_path / 'USPS_test.txt')
 
 
 def plot_boundary(ax: Axes, fn: Callable[[np.ndarray], np.ndarray], *, label: bool = True, x_range: tuple[float, float] = (-2, 2), y_range: tuple[float, float] = (-2, 2)):
-  delta = 0.025
   x_values = np.linspace(*x_range, 100)
   y_values = np.linspace(*y_range, 100)
 
-  x, y = np.meshgrid(x_values,y_values)
+  x, y = np.meshgrid(x_values, y_values)
+  g = np.c_[x.ravel(), y.ravel()]
 
-  ax.contour(x, y, fn(np.array([x, y]).T), colors='gray', levels=[0], linestyles='dashed')
+  ax.contour(x, y, fn(g).reshape(len(x_values), len(y_values)), colors='gray', levels=[0], linestyles='dashed')
   ax.plot([], [], color='gray', linestyle='dashed', label=('Frontière de décision' if label else None))
 
 
@@ -409,6 +389,70 @@ def plot4():
 
 
 def plot5():
+  from sklearn.linear_model import LinearRegression
+  from sklearn.svm import SVC
+
+  x, y = mltools.gen_arti(data_type=0, epsilon=0.3)
+
+  model1 = LinearRegression()
+  model1.fit(x, y)
+
+  model2 = SVC(kernel='linear')
+  model2.fit(x, y)
+
+  fig, ax = plt.subplots()
+
+  mltools.plot_data(ax, x, y, highlight=model2.support_)
+  # plot_boundary(ax, lambda x: np.sign(model1.predict(x)), label=True)
+  # plot_boundary(ax, lambda x: np.sign(model2.predict(x)), label=True)
+
+  ax.axline((0.0, 0.0), slope=(-model1.coef_[0] / model1.coef_[1]), color='C2', label='Perceptron', linestyle='--')
+  ax.axline((0.0, 0.0), slope=(-model2.coef_[0, 0] / model2.coef_[0, 1]), color='C3', label='SVM', linestyle='--')
+
+  ax.legend()
+
+  print(model2.dual_coef_)
+
+  # TODO: Save
+
+
+def plot6():
+  from sklearn.svm import SVC
+  from sklearn.inspection import DecisionBoundaryDisplay
+
+  x, y = mltools.gen_arti(data_type=1)
+
+  model = SVC(kernel='rbf', degree=2)
+  model.fit(x, y)
+
+  print(model.class_weight_)
+  # print(model.coef_)
+  print(model.dual_coef_.shape)
+  print(x.shape)
+  print(model.support_.shape)
+
+  fig, ax = plt.subplots()
+
+  DecisionBoundaryDisplay.from_estimator(
+    estimator=model,
+    ax=ax,
+    X=x,
+    colors=(['gray'] * 3),
+    levels=[-1, 0, 1],
+    linestyles=['--', '-', '--'],
+    plot_method='contour',
+    response_method='decision_function',
+  )
+
+  mltools.plot_data(ax, x, y, highlight=model.support_)
+
+  # print(model.support_)
+
+  ax.set_xlim(-2.5, 2.5)
+  ax.set_ylim(-2.5, 2.5)
+
+
+def plot7():
   words = [
     # 'bar',
     # 'bat',
@@ -586,5 +630,5 @@ def plot5():
 # plot1()
 # plot2()
 # plot3()
-plot5()
+plot7()
 plt.show()

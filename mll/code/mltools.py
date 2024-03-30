@@ -1,10 +1,11 @@
+from typing import Optional, Sequence
 from matplotlib.axes import Axes
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib import cm
 
 
-def plot_data(ax: Axes, data,labels=None):
+def plot_data(ax: Axes, data, labels=None, *, highlight: Optional[Sequence[bool]] = None):
     """
     Affiche des donnees 2D
     :param data: matrice des donnees 2d
@@ -17,8 +18,25 @@ def plot_data(ax: Axes, data,labels=None):
     if labels is None:
         ax.scatter(data[:,0],data[:,1],marker="x")
         return
-    for i,l in enumerate(sorted(list(set(labels.flatten())))):
-        ax.scatter(data[labels==l,0],data[labels==l,1],c=f'C{i}',marker=marks[i])
+
+    for i, l in enumerate(sorted(list(set(labels.flatten())))):
+        ax.scatter(
+            data[labels == l, 0],
+            data[labels == l, 1],
+            c=f'C{i}',
+            marker=marks[i],
+        )
+
+    if highlight is not None:
+        for i, l in enumerate(sorted(list(set(labels.flatten())))):
+            ax.scatter(
+                data[highlight, 0][labels[highlight] == l],
+                data[highlight, 1][labels[highlight] == l],
+                facecolors='none',
+                edgecolors='black',
+                s=[86.0, 30.0][i],
+                marker=['.', 'P'][i]
+            )
 
     ax.set_xlabel('X₁')
     ax.set_ylabel('X₂')
