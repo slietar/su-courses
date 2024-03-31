@@ -289,6 +289,29 @@ Le problème de l'échiquier peut être correctement résolu avec une grille de 
 )
 
 
+== String kernel
+
+On utilise uniquement des sous-séquences de taille $|u| = 3$, et une valeur $lambda = 0.8$.
+
+On teste d'abord le string kernel sur un ensemble réduit de mots.
+
+#figure(
+  image("../output/tme5/12.png"),
+  caption: [Similarité entre paires de mots en utilisant le string kernel]
+)
+
+On cherche ensuite à classifier un texte pour trouver s'il a été écrit par _La Fontaine_ ou par _Montaigne_. On entraîne un modèle de SVM sur _Les Fables_ et _Les Essais_, respectivement. On se limite à 500 mots de chaque texte pour des raisons de performance ; les mots restants sont utilisés pour le test.
+
+Pour obtenir la prédiction finale lors du test, on utilise le modèle pour prédire la classe de chaque mot de l'ensemble de test, puis on retourne la classe majoritaire.
+
+#figure(
+  image("../output/tme5/13.png"),
+  caption: [Histogramme du résultat de 200 prédictions]
+)
+
+Le modèle est assez bon et trouve la bonne classe dans 91 % des cas.
+
+
 
 = TME 6 – Bagging, boosting
 

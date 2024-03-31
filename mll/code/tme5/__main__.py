@@ -1,16 +1,20 @@
 import functools
 import itertools
 import operator
+import random
+import re
 import sys
 from pathlib import Path
 from typing import Callable, Optional, Sequence
 
+from matplotlib.ticker import MaxNLocator
 import numpy as np
 from matplotlib import pyplot as plt
 from matplotlib.axes import Axes
 from matplotlib.colors import LogNorm
+from tqdm import tqdm
 
-from .. import config, mltools
+from .. import config, mltools, utils
 
 
 def perceptron_loss(w: np.ndarray, x: np.ndarray, y: np.ndarray):
@@ -175,17 +179,6 @@ test_x, test_y = load_usps(data_path / 'USPS_test.txt')
 # plt.show()
 
 
-def plot_boundary(ax: Axes, fn: Callable[[np.ndarray], np.ndarray], *, label: bool = True, x_range: tuple[float, float] = (-2, 2), y_range: tuple[float, float] = (-2, 2)):
-  x_values = np.linspace(*x_range, 100)
-  y_values = np.linspace(*y_range, 100)
-
-  x, y = np.meshgrid(x_values, y_values)
-  g = np.c_[x.ravel(), y.ravel()]
-
-  ax.contour(x, y, fn(g).reshape(len(x_values), len(y_values)), colors='gray', levels=[0], linestyles='dashed')
-  ax.plot([], [], color='gray', linestyle='dashed', label=('Frontière de décision' if label else None))
-
-
 def plot1():
   def run(against_all: bool):
     model = Lineaire(eps=1e-3, max_iter=20)
@@ -269,7 +262,7 @@ def plot2():
     # fig, ax = plt.subplots()
 
     mltools.plot_data(ax, x, y)
-    plot_boundary(ax, model.predict_value, label=(ax_index < 1), x_range=lim, y_range=lim)
+    utils.plot_boundary(ax, model.predict_value, label=(ax_index < 1), x_range=lim, y_range=lim)
 
     ax.set_xlim(*lim)
     ax.set_ylim(*lim)
@@ -316,7 +309,7 @@ def plot3():
     ax = fig.add_subplot(1, 2, 1)
 
     mltools.plot_data(ax, x, y)
-    plot_boundary(ax, model.predict_value, x_range=lim, y_range=lim)
+    utils.plot_boundary(ax, model.predict_value, x_range=lim, y_range=lim)
 
     ax.scatter(*base.T, color='C3', label='Base', marker='^')
 
@@ -380,7 +373,7 @@ def plot4():
   ax = fig.add_subplot(1, 2, 1)
 
   mltools.plot_data(ax, x, y)
-  plot_boundary(ax, model.predict_value, x_range=lim, y_range=lim)
+  utils.plot_boundary(ax, model.predict_value, x_range=lim, y_range=lim)
 
   # ax.scatter(*base.T, color='C3', label='Base', marker='^')
 
@@ -403,8 +396,8 @@ def plot5():
   fig, ax = plt.subplots()
 
   mltools.plot_data(ax, x, y, highlight=model2.support_)
-  # plot_boundary(ax, lambda x: np.sign(model1.predict(x)), label=True)
-  # plot_boundary(ax, lambda x: np.sign(model2.predict(x)), label=True)
+  # utils.plot_boundary(ax, lambda x: np.sign(model1.predict(x)), label=True)
+  # utils.plot_boundary(ax, lambda x: np.sign(model2.predict(x)), label=True)
 
   ax.axline((0.0, 0.0), slope=(-model1.coef_[0] / model1.coef_[1]), color='C2', label='Perceptron', linestyle='--')
   ax.axline((0.0, 0.0), slope=(-model2.coef_[0, 0] / model2.coef_[0, 1]), color='C3', label='SVM', linestyle='--')
@@ -417,8 +410,8 @@ def plot5():
 
 
 def plot6():
-  from sklearn.svm import SVC
   from sklearn.inspection import DecisionBoundaryDisplay
+  from sklearn.svm import SVC
 
   x, y = mltools.gen_arti(data_type=1)
 
@@ -452,7 +445,205 @@ def plot6():
   ax.set_ylim(-2.5, 2.5)
 
 
+def tokenize(text: str, /):
+  return [word for word in re.split(r'[^a-z]', utils.remove_accents(text.lower())) if len(word) > 2]
+
+@functools.cache
+def get_subsequences(word: str, k: int, *, _add_offset: bool = False):
+  if k == 1:
+    return { tuple[str, ...]((letter,)): [(letter_index if _add_offset else 0) + 1] for letter_index, letter in enumerate(word) }
+
+  result = dict[tuple[str, ...], list[int]]()
+
+  for letter_index, letter in enumerate(word):
+    for subword, spans in get_subsequences(word[(letter_index + 1):], k - 1, _add_offset=True).items():
+      result.setdefault((letter, *subword), []).extend([span + 1 for span in spans])
+
+  return result
+
+def string_kernel(a: list[str], b: list[str]):
+  # print('>', a, b)
+  lambda_ = 0.8
+
+  all_words = list(set(a) | set(b))
+  subwords_per_word = {
+    word: {
+      subword: sum(lambda_ ** span for span in spans) for subword, spans in get_subsequences(word, 3).items()
+    } for word in all_words
+  }
+
+  norms = { word: np.sqrt(sum(score ** 2 for score in subwords_per_word[word].values())) for word in all_words }
+  result = np.zeros((len(a), len(b)))
+
+  # print(np.array((norms.values() == 0)).sum())
+  # print(np.min(np.array(list(norms.values()))))
+
+  # print({word for word, a in norms.items() if a == 0})
+
+  for index_a, word_a in enumerate(a):
+    for index_b, word_b in enumerate(b):
+      # subwords_a = subwords_per_word[word_a]
+      # subwords_b = subwords_per_word[word_b]
+
+      result[index_a, index_b] = sum(
+        score_a * subwords_per_word[word_b].get(subword_a, 0.0) for subword_a, score_a in subwords_per_word[word_a].items()
+      ) / norms[word_a] / norms[word_b]
+
+  # print(result)
+  return result
+
+
+  # Cleaner algorithm but requires more memory
+
+  # all_subwords = list(functools.reduce(operator.or_, [set(word_subsequences.keys()) for word_subsequences in subwords_per_word.values()], set()))
+  # all_subwords_inverse = { subword: index for index, subword in enumerate(all_subwords) }
+
+  # values = np.zeros((len(all_words), len(all_subwords)))
+
+  # for word_index, word in enumerate(all_words):
+  #   for subword, value in subwords_per_word[word].items():
+  #     values[word_index, all_subwords.index(subword)] = value
+
+  # a_indices = [all_words.index(word) for word in a]
+  # b_indices = [all_words.index(word) for word in b]
+
+  # norms = np.sqrt((values ** 2).sum(axis=1))
+  # return (values[None, b_indices, :] * values[a_indices, None, :]).sum(axis=2) / norms[None, b_indices] / norms[a_indices, None]
+
+
 def plot7():
+  fig, ax = plt.subplots()
+
+  words = [
+    'algorithm',
+    'biology',
+    'biorhythm',
+    'competing',
+    'computation',
+    'logarithm',
+    'rhythm',
+  ]
+
+  im = ax.imshow(string_kernel(words, words), cmap='plasma')
+  ax.set_xticks(range(len(words)), words, rotation='vertical')
+  ax.set_yticks(range(len(words)), words)
+
+  ax.tick_params('x', bottom=False, labelbottom=False, labeltop=True)
+  ax.tick_params('y', left=False)
+
+  plt.setp(ax.get_xticklabels(), ha='left', rotation=45, rotation_mode='anchor')
+
+  cbar = fig.colorbar(im, ax=ax)
+
+  cbar.ax.get_yaxis().labelpad = 15
+  cbar.ax.set_ylabel('Similarité', rotation=270)
+
+  fig.subplots_adjust(bottom=0.02, top=0.8)
+
+  with (output_path / '12.png').open('wb') as file:
+    fig.savefig(file)
+
+
+def plot8():
+  from sklearn.svm import SVC
+
+  random.seed(0)
+  np.random.seed(0)
+
+  tokens = list[list[str]]()
+
+  for text_index in [1, 2]:
+    with Path(f'code/tme5/data/texts/{text_index}.txt').open('rt') as file:
+      tokens.append(tokenize(file.read()))
+
+    random.shuffle(tokens[-1])
+
+
+  train0 = tokens[0][:500]
+  train1 = tokens[1][:500]
+
+  test_tokens = [
+    tokens[0][500:],
+    tokens[1][500:]
+  ]
+
+  model = SVC(kernel=string_kernel)
+  model.fit([*train0, *train1], [0] * len(train0) + [1] * len(train1))
+
+  # print(model.predict(tokens[0][500:5000]).mean())
+  # print(model.predict(tokens[1][500:5000]).mean())
+
+  repeat_count = 100
+  result = np.zeros((repeat_count, 2))
+
+  for repeat_index in tqdm(range(repeat_count)):
+    for author_index in range(2):
+      perm = np.random.permutation(len(test_tokens[author_index]))
+      result[repeat_index, author_index] = model.predict([test_tokens[author_index][token_index] for token_index in perm[:100]]).mean()
+
+  print(f'Correct predictions: {(((result[:, 0] < 0.5).sum() + (result[:, 1] > 0.5).sum()) / result.size * 100):.2f}%')
+
+  fig, ax = plt.subplots()
+  fig.set_figheight(4.5)
+
+  bins = np.linspace(0.0, 1.0, 21)
+
+  ax.hist(result[:, 0], bins=bins, label='La Fontaine', alpha=0.5, rwidth=0.9)
+  ax.hist(result[:, 1], bins=bins, label='Montaigne', alpha=0.5, rwidth=0.9)
+
+  ax.set_xlim(0.0, 1.0)
+
+  ax.set_xlabel('← La Fontaine', color='C0', loc='left')
+  ax.set_ylabel('Nombre de prédictions')
+
+  ax.yaxis.set_major_locator(MaxNLocator(integer=True))
+
+  ax1 = fig.add_subplot(1, 1, 1, frame_on=False, yticks=[])
+  ax1.set_xlabel('Montaigne →', color='C1', loc='right')
+
+  plt.setp(ax1.get_xticklabels(), alpha=0.0)
+  plt.setp(ax1.get_xticklines(), alpha=0.0)
+
+  with (output_path / '13.png').open('wb') as file:
+    fig.savefig(file)
+
+  # word_counts = np.arange(10, 100, 10)
+  # res = np.zeros((len(word_counts), 2))
+
+  # p0 = np.random.permutation(len(test0))
+  # for word_count_index, word_count in enumerate(word_counts):
+  #   # res[word_count_index, 0] = model.predict([test0[i] for i in p0[:word_count]]).mean()
+  #   # res[word_count_index, 1] = model.predict(tokens[1][500:(500 + word_count)]).mean()
+
+  #   res[word_count_index, 0] = model.predict(train0).mean()
+  #   res[word_count_index, 1] = model.predict(train1).mean()
+
+  # fig, ax = plt.subplots()
+
+  # ax.plot(word_counts, res[:, 0], label='La Fontaine')
+  # ax.plot(word_counts, res[:, 1], label='Montaigne')
+
+  # ax.legend()
+
+
+  # print(model.predict(['pommeau', 'voiture', 'pomme', 'voiturier']))
+
+  # for i in range(500, 2000, 500):
+  #   print(model.predict(tokens[0][i:(i + 500)]).mean())
+  #   print(model.predict(tokens[1][i:(i + 500)]).mean())
+
+  # a = kernel(train1, train1)
+
+
+  # print(len(tokens[0]), len(tokens[1]))
+  # a = kernel([*train1, *train2], [0] * len(train)
+  # print(len(tokens[0]))
+
+  # print(((a > 0) & (a < 1 - 1e-6)).sum())
+
+  # print(kernel(['pommeau', 'voiture', 'pomme', 'voiturier'], ['pommeau', 'voiture']))
+
+def _():
   words = [
     # 'bar',
     # 'bat',
@@ -470,46 +661,46 @@ def plot7():
     'competing',
     'computation',
 
-    'abandon',
-    'abandoned',
-    'abandoning',
-    'abandonment',
-    'abandons',
-    'abase',
-    'abased',
-    'abasement',
-    'abasements',
-    'abases',
-    'abash',
-    'abashed',
-    'abashes',
-    'abashing',
-    'abasing',
-    'abate',
-    'abated',
-    'abatement',
-    'abatements',
-    'abater',
-    'abates',
-    'abating',
-    'limit',
-    'limitability',
-    'limitably',
-    'limitation',
-    'limitations',
-    'limited',
-    'limiter',
-    'limiters',
-    'limiting',
-    'limitless',
-    'limits',
-    'limousine',
-    'limp',
-    'limped',
-    'limping',
-    'limply',
-    'limpness',
-    'limps',
+    # 'abandon',
+    # 'abandoned',
+    # 'abandoning',
+    # 'abandonment',
+    # 'abandons',
+    # 'abase',
+    # 'abased',
+    # 'abasement',
+    # 'abasements',
+    # 'abases',
+    # 'abash',
+    # 'abashed',
+    # 'abashes',
+    # 'abashing',
+    # 'abasing',
+    # 'abate',
+    # 'abated',
+    # 'abatement',
+    # 'abatements',
+    # 'abater',
+    # 'abates',
+    # 'abating',
+    # 'limit',
+    # 'limitability',
+    # 'limitably',
+    # 'limitation',
+    # 'limitations',
+    # 'limited',
+    # 'limiter',
+    # 'limiters',
+    # 'limiting',
+    # 'limitless',
+    # 'limits',
+    # 'limousine',
+    # 'limp',
+    # 'limped',
+    # 'limping',
+    # 'limply',
+    # 'limpness',
+    # 'limps',
   ]
 
   def comb(word: str, k: int, *, _add_offset: bool = False):
@@ -519,12 +710,8 @@ def plot7():
     result = dict[tuple[str, ...], list[int]]()
 
     for letter_index, letter in enumerate(word):
-      # print('>', comb(word[letter_index:], k - 1))
-
       for subword, spans in comb(word[(letter_index + 1):], k - 1, _add_offset=True).items():
         result.setdefault((letter, *subword), []).extend([span + 1 for span in spans])
-
-      # result |= { (letter, k): v for k, v in comb(word[1:], k - 1).items() }
 
     return result
 
@@ -557,24 +744,24 @@ def plot7():
   print('SIMILARITY')
   print(pd.DataFrame(similarity, columns=words, index=words))
 
-  from sklearn.manifold import MDS
+  # from sklearn.manifold import MDS
 
-  embedding = MDS(dissimilarity='precomputed', metric=False, normalized_stress=True, n_init=100)
-  ts = embedding.fit_transform(-similarity)
+  # embedding = MDS(dissimilarity='precomputed', metric=False, normalized_stress=True, n_init=100)
+  # ts = embedding.fit_transform(-similarity)
 
-  print('MDS')
-  # print(ts)
-  print(ts.shape)
+  # print('MDS')
+  # # print(ts)
+  # print(ts.shape)
 
-  # print(embedding.dissimilarity_matrix_)
-  # print(embedding.stress_)
+  # # print(embedding.dissimilarity_matrix_)
+  # # print(embedding.stress_)
 
-  fig, ax = plt.subplots()
+  # fig, ax = plt.subplots()
 
-  ax.scatter(*ts.T)
+  # ax.scatter(*ts.T)
 
-  for i, word in enumerate(words):
-    ax.annotate(word, (ts[i, 0], ts[i, 1]))
+  # for i, word in enumerate(words):
+  #   ax.annotate(word, (ts[i, 0], ts[i, 1]))
 
 
   fig, ax = plt.subplots()
@@ -630,5 +817,5 @@ def plot7():
 # plot1()
 # plot2()
 # plot3()
-plot7()
-plt.show()
+plot8()
+# plt.show()
