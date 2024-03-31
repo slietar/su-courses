@@ -215,7 +215,6 @@ Les ensembles de test et d'entraînement n'ayant pas la même note moyenne, ils 
 
 == Projections et pénalisation
 
-
 === Projection avec biais et projection polynomiale de degré 2
 
 On code les fonction ```py proj_biais``` et ```py proj_poly``` :
@@ -242,7 +241,6 @@ def proj_poly(x: np.ndarray, /):
 )
 
 L'ajout d'un biais uniquement ne permet pas de séparer les données car celles-ci ne sont pas linéairement séparables, or le modèle reste linéaire. En revanche, la projection polynomiale, et en particulier la composante $x_1 x_2$, permet de séparer les données. La frontière de décision du modèle pour les données de type 1 est de la forme $0.1 + 10x_1 x_2 = 0$.
-
 
 === Projection gaussienne
 
@@ -287,6 +285,81 @@ Le problème de l'échiquier peut être correctement résolu avec une grille de 
   image("../output/tme5/11.png"),
   caption: [Séparation des données de type 2 avec $sigma = 0.5$]
 )
+
+
+== SVM et grid search
+
+=== Données artificielles
+
+#figure(
+  image("../output/tme5/14.png"),
+  caption: [Classification des données de type 0. Les points surlignés sont des vecteurs support.]
+)
+
+Le SVM avec un noyau linéaire et les paramètres par défaut classe correctement les données de type 0, comme le perceptron.
+
+#figure(
+  image("../output/tme5/15.png"),
+  caption: [Classification des données de type 0 avec un noyau linéaire pour différentes valeurs de~$C$]
+)
+
+On fait ensuite varier la valeur de $C$ pour le noyau linéaire. Le modèle a plus de vecteurs support lorsque $C$ est petit, ce qui favorise la maximisation de la marge de classification. En revanche, lorsque $C$ est grand, le modèle n'a plus que 3 vecteurs support et favorise la justesse de la classification.
+
+#figure(
+  image("../output/tme5/16.png"),
+  caption: [Classification des données de type 1]
+)
+
+Les noyaux gaussien et polynomial de degré 2 donnent une classification équivalente et permettent de classer les données de type 1.
+
+#figure(
+  image("../output/tme5/17.png"),
+  caption: [Classification des données de type 1 avec un noyau gaussien pour différentes valeurs de~$gamma$]
+)
+
+On teste ensuite le noyau gaussien avec différentes valeurs de $gamma$. Une valeur de $gamma$ trop faible donne un modèle qui ne prend pas en compte les détails des données. Au contraire, $gamma$ trop élevé donne un modèle qui surapprend et où tous les points sont des vecteurs support.
+
+=== Reconaissance de chiffres
+
+#figure(
+  table(
+    align: (left, center, center),
+    columns: 4,
+    stroke: none,
+    table.header[*Noyau*][*$C$*][*Entraînement*][*Test*],
+    table.hline(),
+    [Gaussien], [0.5], [0.987], [0.971],
+    [Gaussien], [1.0], [0.994], [0.976],
+    [Gaussien], [5.0], [0.999], [*0.979*],
+    table.hline(stroke: gray),
+    [Linéaire], [0.5], [1.000], [0.955],
+    [Linéaire], [1.0], [1.000], [0.955],
+    [Linéaire], [5.0], [1.000], [0.955],
+    table.hline(stroke: gray),
+    [Polynomial de degré 2], [0.5], [0.985], [0.968],
+    [Polynomial de degré 2], [1.0], [0.993], [0.972],
+    [Polynomial de degré 2], [5.0], [0.999], [0.974],
+    table.hline(stroke: gray),
+    [Polynomial de degré 3], [0.5], [0.986], [0.959],
+    [Polynomial de degré 3], [1.0], [0.993], [0.966],
+    [Polynomial de degré 3], [5.0], [0.999], [0.969],
+    table.hline(stroke: gray),
+    [Polynomial de degré 4], [0.5], [0.976], [0.941],
+    [Polynomial de degré 4], [1.0], [0.986], [0.948],
+    [Polynomial de degré 4], [5.0], [0.996], [0.958],
+  ),
+
+  caption: [Scores lors de la recherche de paramètres optimaux pour la reconnaissance de chiffres, avec 10 000 points d'entraînement]
+)
+
+On teste un large nombre de noyaux et de paramètres différents sur le problème de la reconnaissance de chiffres. Le modèle optimal parmi ceux testés est un SVM avec un noyau gaussien et $C = 5.0$.
+
+#figure(
+  image("../output/tme5/18.png"),
+  caption: [Reconaissance de chiffres avec différents nombres de points d'entrainement, sur le noyau optimal]
+)
+
+En testant différents nombre de points d'entraînement, on observe que le score augmente rapidement en performance jusqu'au seuil de 500 points, au delà duquel la performance augmente beaucoup plus lentement.
 
 
 == String kernel

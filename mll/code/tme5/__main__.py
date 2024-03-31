@@ -1,4 +1,10 @@
+from collections import namedtuple
 import functools
+from sklearn.inspection import DecisionBoundaryDisplay
+from sklearn.linear_model import LinearRegression
+from sklearn.model_selection import GridSearchCV
+from sklearn.svm import SVC
+
 import itertools
 import operator
 import random
@@ -11,7 +17,6 @@ from matplotlib.ticker import MaxNLocator
 import numpy as np
 from matplotlib import pyplot as plt
 from matplotlib.axes import Axes
-from matplotlib.colors import LogNorm
 from tqdm import tqdm
 
 from .. import config, mltools, utils
@@ -148,14 +153,14 @@ def load_usps(fn):
     tmp=np.array(data)
     return tmp[:,1:],tmp[:,0].astype(int)
 
-def get_usps(l,datax,datay):
-    if type(l)!=list:
-        resx = datax[datay==l,:]
-        resy = datay[datay==l]
-        return resx,resy
-    tmp =   list(zip(*[get_usps(i,datax,datay) for i in l]))
-    tmpx,tmpy = np.vstack(tmp[0]),np.hstack(tmp[1])
-    return tmpx,tmpy
+@functools.cache
+def get_usps():
+  train_x, train_y = load_usps(data_path / 'USPS_train.txt')
+  test_x, test_y = load_usps(data_path / 'USPS_test.txt')
+
+  return namedtuple('USPS', ['train_x', 'train_y', 'test_x', 'test_y'])(train_x, train_y, test_x, test_y)
+
+
 
 def show_usps(ax: Axes, data):
   im = ax.imshow(data.reshape((16,16)),interpolation="nearest",cmap="gray")
@@ -167,33 +172,24 @@ output_path.mkdir(exist_ok=True, parents=True)
 
 data_path = Path(__file__).parent / 'data'
 
-train_x, train_y = load_usps(data_path / 'USPS_train.txt')
-test_x, test_y = load_usps(data_path / 'USPS_test.txt')
-
-# print(train_x.shape, train_y.shape)
-# print(train_x.dtype)
-
-# show_usps(train_x[0])
-# print(train_y[0])
-
-# plt.show()
-
 
 def plot1():
+  data = get_usps()
+
   def run(against_all: bool):
     model = Lineaire(eps=1e-3, max_iter=20)
 
-    train_mask = (train_y == 6) | ((train_y == 9) if not against_all else True)
+    train_mask = (data.train_y == 6) | ((data.train_y == 9) if not against_all else True)
     # train_mask = [True] * len(train_y) # (train_y == 6) | ((train_y == 9) if not against_all else True)
-    train_ax = train_x[train_mask, :]
-    train_ay = np.where(train_y[train_mask] == 6, 1, -1)
+    train_ax = data.train_x[train_mask, :]
+    train_ay = np.where(data.train_y[train_mask] == 6, 1, -1)
 
     train_ax += np.random.normal(0, 10.0, train_ax.shape)
 
-    test_mask = (test_y == 6) | ((test_y == 9) if not against_all else True)
+    test_mask = (data.test_y == 6) | ((data.test_y == 9) if not against_all else True)
     # test_mask = [True] * len(test_y)
-    test_ax = test_x[test_mask, :]
-    test_ay = np.where(test_y[test_mask] == 6, 1, -1)
+    test_ax = data.test_x[test_mask, :]
+    test_ay = np.where(data.test_y[test_mask] == 6, 1, -1)
     # print(test_y[test_mask] == 1)
     # test_ay = np.random.choice([-1, 1], len(test_y[test_mask]), p=[0.5, 0.5]) # np.where(test_y[test_mask] == 1, 1, -1)
 
@@ -381,9 +377,8 @@ def plot4():
   ax.set_ylim(*lim)
 
 
-def plot5():
-  from sklearn.linear_model import LinearRegression
-  from sklearn.svm import SVC
+def plot5a():
+  np.random.seed(0)
 
   x, y = mltools.gen_arti(data_type=0, epsilon=0.3)
 
@@ -396,53 +391,202 @@ def plot5():
   fig, ax = plt.subplots()
 
   mltools.plot_data(ax, x, y, highlight=model2.support_)
-  # utils.plot_boundary(ax, lambda x: np.sign(model1.predict(x)), label=True)
-  # utils.plot_boundary(ax, lambda x: np.sign(model2.predict(x)), label=True)
 
   ax.axline((0.0, 0.0), slope=(-model1.coef_[0] / model1.coef_[1]), color='C2', label='Perceptron', linestyle='--')
   ax.axline((0.0, 0.0), slope=(-model2.coef_[0, 0] / model2.coef_[0, 1]), color='C3', label='SVM', linestyle='--')
 
   ax.legend()
 
-  print(model2.dual_coef_)
+  with (output_path / '14.png').open('wb') as file:
+    fig.savefig(file)
 
-  # TODO: Save
+
+def plot5b():
+  np.random.seed(1)
+
+  x, y = mltools.gen_arti(data_type=0, epsilon=0.1)
+  lim = (-1.5, 1.5)
+
+  cs = [0.1, 1.0, 10.0]
+
+  fig, axs = plt.subplots(ncols=len(cs))
+  fig.set_figheight(2.2)
+
+  ax: Axes
+
+  for c, ax in zip(cs, axs):
+    model = SVC(kernel='linear', C=c)
+    model.fit(x, y)
+
+    DecisionBoundaryDisplay.from_estimator(
+      estimator=model,
+      ax=ax,
+      X=x,
+      colors=['gray'],
+      levels=[-1, 0, 1],
+      linestyles=[':', '--', ':'],
+      plot_method='contour',
+      response_method='decision_function'
+    )
+
+    mltools.plot_data(ax, x, y, highlight=model.support_)
+
+    ax.set_xlim(*lim)
+    ax.set_ylim(*lim)
+
+    ax.set_title(f'C = {c:.1f}')
+
+  fig.subplots_adjust(bottom=0.2)
+  utils.filter_axes(axs[None, :])
+
+  with (output_path / '15.png').open('wb') as file:
+    fig.savefig(file)
 
 
-def plot6():
-  from sklearn.inspection import DecisionBoundaryDisplay
-  from sklearn.svm import SVC
+
+def plot6a():
+  np.random.seed(0)
 
   x, y = mltools.gen_arti(data_type=1)
+  lim = mltools.get_lim_for_data_type(data_type=1)
 
-  model = SVC(kernel='rbf', degree=2)
-  model.fit(x, y)
+  fig, axs = plt.subplots(ncols=2)
+  fig.set_figheight(3.0)
 
-  print(model.class_weight_)
-  # print(model.coef_)
-  print(model.dual_coef_.shape)
-  print(x.shape)
-  print(model.support_.shape)
+  ax: Axes
+
+  for plot_index, (kernel, ax) in enumerate(zip(['rbf', 'poly'], axs)):
+    model = SVC(kernel=kernel, degree=2, gamma=0.1)
+    model.fit(x, y)
+
+    DecisionBoundaryDisplay.from_estimator(
+      estimator=model,
+      ax=ax,
+      X=x,
+      colors=['gray'],
+      levels=[0],
+      linestyles=['--'],
+      plot_method='contour',
+      response_method='decision_function'
+    )
+
+    mltools.plot_data(ax, x, y, highlight=model.support_)
+
+    ax.set_xlim(*lim)
+    ax.set_ylim(*lim)
+
+    ax.set_title(['Noyau gaussien (RBF)', 'Noyau polynomial de degré 2'][plot_index])
+
+  fig.subplots_adjust(bottom=0.15)
+  utils.filter_axes(axs[None, :])
+
+  with (output_path / '16.png').open('wb') as file:
+    fig.savefig(file)
+
+def plot6b():
+  np.random.seed(1)
+
+  x, y = mltools.gen_arti(data_type=1, epsilon=0.2, nbex=100)
+  lim = (-2.5, 2.5)
+
+  gs = [0.1, 0.5, 10.0]
+
+  fig, axs = plt.subplots(ncols=len(gs))
+  fig.set_figheight(2.2)
+
+  ax: Axes
+
+  for gamma, ax in zip(gs, axs):
+    model = SVC(kernel='rbf', gamma=gamma)
+    model.fit(x, y)
+
+    DecisionBoundaryDisplay.from_estimator(
+      estimator=model,
+      ax=ax,
+      X=x,
+      cmap='RdYlBu_r',
+      alpha=0.5,
+      plot_method='contourf',
+      response_method='decision_function'
+    )
+
+    mltools.plot_data(ax, x, y, highlight=model.support_)
+
+    ax.set_xlim(*lim)
+    ax.set_ylim(*lim)
+
+    ax.set_title(f'γ = {gamma:.1f}')
+
+  fig.subplots_adjust(bottom=0.2)
+  utils.filter_axes(axs[None, :])
+
+  with (output_path / '17.png').open('wb') as file:
+    fig.savefig(file)
+
+
+def plot6c():
+  import pandas as pd
+
+  data = get_usps()
+
+  grid = GridSearchCV(SVC(), [
+    { 'kernel': ['poly'], 'degree': [2, 3, 4], 'C': [0.5, 1.0, 5.0] },
+    { 'kernel': ['linear', 'rbf'], 'C': [0.5, 1.0, 5.0] }
+  ], return_train_score=True)
+
+  grid.fit(data.train_x[:10000, :], data.train_y[:10000])
+
+  df = pd.DataFrame(grid.cv_results_)
+  df.sort_values(['param_kernel', 'param_degree', 'param_C'], inplace=True)
+
+  output = 'table(\n  align: (left, center, center),\n  columns: 4,\n  stroke: none,\n  table.header[*Noyau*][*$C$*][*Entraînement*][*Test*],\n  table.hline(),\n'
+
+  for _, row in df.iterrows():
+    match row.param_kernel:
+      case 'linear':
+        name = 'Linéaire'
+      case 'poly':
+        name = f'Polynomial de degré {row.param_degree}'
+      case 'rbf':
+        name = 'Gaussien'
+
+    em = '*' if row.mean_test_score == df.mean_test_score.max() else ''
+    output += f'  [{name}], [{row.param_C:.1f}], [{row.mean_train_score:.3f}], [{em}{row.mean_test_score:.3f}{em}],\n'
+
+  output += ')\n'
+
+  print(output)
+
+
+def plot6d():
+  data = get_usps()
+
+  training_counts = np.arange(100, 3000, 100)
+  scores = np.empty((len(training_counts), 2))
+
+  for count_index, count in enumerate(training_counts):
+    model = SVC(kernel='linear', C=5.0)
+    model.fit(data.train_x[:count, :], data.train_y[:count])
+
+    scores[count_index, 0] = model.score(data.train_x, data.train_y)
+    scores[count_index, 1] = model.score(data.test_x, data.test_y)
 
   fig, ax = plt.subplots()
 
-  DecisionBoundaryDisplay.from_estimator(
-    estimator=model,
-    ax=ax,
-    X=x,
-    colors=(['gray'] * 3),
-    levels=[-1, 0, 1],
-    linestyles=['--', '-', '--'],
-    plot_method='contour',
-    response_method='decision_function',
-  )
+  ax.plot(training_counts, scores[:, 0], label='Entraînement')
+  ax.plot(training_counts, scores[:, 1], label='Test')
 
-  mltools.plot_data(ax, x, y, highlight=model.support_)
+  ax.set_xlabel('Nombre de points d\'entraînement')
+  ax.set_ylabel('Score')
 
-  # print(model.support_)
+  ax.grid()
+  ax.legend(loc='lower right')
 
-  ax.set_xlim(-2.5, 2.5)
-  ax.set_ylim(-2.5, 2.5)
+  fig.subplots_adjust(bottom=0.15)
+
+  with (output_path / '18.png').open('wb') as file:
+    fig.savefig(file)
+
 
 
 def tokenize(text: str, /):
@@ -462,7 +606,6 @@ def get_subsequences(word: str, k: int, *, _add_offset: bool = False):
   return result
 
 def string_kernel(a: list[str], b: list[str]):
-  # print('>', a, b)
   lambda_ = 0.8
 
   all_words = list(set(a) | set(b))
@@ -475,21 +618,12 @@ def string_kernel(a: list[str], b: list[str]):
   norms = { word: np.sqrt(sum(score ** 2 for score in subwords_per_word[word].values())) for word in all_words }
   result = np.zeros((len(a), len(b)))
 
-  # print(np.array((norms.values() == 0)).sum())
-  # print(np.min(np.array(list(norms.values()))))
-
-  # print({word for word, a in norms.items() if a == 0})
-
   for index_a, word_a in enumerate(a):
     for index_b, word_b in enumerate(b):
-      # subwords_a = subwords_per_word[word_a]
-      # subwords_b = subwords_per_word[word_b]
-
       result[index_a, index_b] = sum(
         score_a * subwords_per_word[word_b].get(subword_a, 0.0) for subword_a, score_a in subwords_per_word[word_a].items()
       ) / norms[word_a] / norms[word_b]
 
-  # print(result)
   return result
 
 
@@ -553,7 +687,7 @@ def plot8():
   tokens = list[list[str]]()
 
   for text_index in [1, 2]:
-    with Path(f'code/tme5/data/texts/{text_index}.txt').open('rt') as file:
+    with (data_path / f'texts/{text_index}.txt').open('rt') as file:
       tokens.append(tokenize(file.read()))
 
     random.shuffle(tokens[-1])
@@ -569,9 +703,6 @@ def plot8():
 
   model = SVC(kernel=string_kernel)
   model.fit([*train0, *train1], [0] * len(train0) + [1] * len(train1))
-
-  # print(model.predict(tokens[0][500:5000]).mean())
-  # print(model.predict(tokens[1][500:5000]).mean())
 
   repeat_count = 100
   result = np.zeros((repeat_count, 2))
@@ -607,215 +738,13 @@ def plot8():
   with (output_path / '13.png').open('wb') as file:
     fig.savefig(file)
 
-  # word_counts = np.arange(10, 100, 10)
-  # res = np.zeros((len(word_counts), 2))
-
-  # p0 = np.random.permutation(len(test0))
-  # for word_count_index, word_count in enumerate(word_counts):
-  #   # res[word_count_index, 0] = model.predict([test0[i] for i in p0[:word_count]]).mean()
-  #   # res[word_count_index, 1] = model.predict(tokens[1][500:(500 + word_count)]).mean()
-
-  #   res[word_count_index, 0] = model.predict(train0).mean()
-  #   res[word_count_index, 1] = model.predict(train1).mean()
-
-  # fig, ax = plt.subplots()
-
-  # ax.plot(word_counts, res[:, 0], label='La Fontaine')
-  # ax.plot(word_counts, res[:, 1], label='Montaigne')
-
-  # ax.legend()
-
-
-  # print(model.predict(['pommeau', 'voiture', 'pomme', 'voiturier']))
-
-  # for i in range(500, 2000, 500):
-  #   print(model.predict(tokens[0][i:(i + 500)]).mean())
-  #   print(model.predict(tokens[1][i:(i + 500)]).mean())
-
-  # a = kernel(train1, train1)
-
-
-  # print(len(tokens[0]), len(tokens[1]))
-  # a = kernel([*train1, *train2], [0] * len(train)
-  # print(len(tokens[0]))
-
-  # print(((a > 0) & (a < 1 - 1e-6)).sum())
-
-  # print(kernel(['pommeau', 'voiture', 'pomme', 'voiturier'], ['pommeau', 'voiture']))
-
-def _():
-  words = [
-    # 'bar',
-    # 'bat',
-    # 'car',
-    # 'cat',
-    # 'catfish',
-    # 'barbara',
-    # 'barb'
-
-    'logarithm',
-    'algorithm',
-    'biorhythm',
-    'rhythm',
-    'biology',
-    'competing',
-    'computation',
-
-    # 'abandon',
-    # 'abandoned',
-    # 'abandoning',
-    # 'abandonment',
-    # 'abandons',
-    # 'abase',
-    # 'abased',
-    # 'abasement',
-    # 'abasements',
-    # 'abases',
-    # 'abash',
-    # 'abashed',
-    # 'abashes',
-    # 'abashing',
-    # 'abasing',
-    # 'abate',
-    # 'abated',
-    # 'abatement',
-    # 'abatements',
-    # 'abater',
-    # 'abates',
-    # 'abating',
-    # 'limit',
-    # 'limitability',
-    # 'limitably',
-    # 'limitation',
-    # 'limitations',
-    # 'limited',
-    # 'limiter',
-    # 'limiters',
-    # 'limiting',
-    # 'limitless',
-    # 'limits',
-    # 'limousine',
-    # 'limp',
-    # 'limped',
-    # 'limping',
-    # 'limply',
-    # 'limpness',
-    # 'limps',
-  ]
-
-  def comb(word: str, k: int, *, _add_offset: bool = False):
-    if k == 1:
-      return { tuple[str, ...]((letter,)): [(letter_index if _add_offset else 0) + 1] for letter_index, letter in enumerate(word) }
-
-    result = dict[tuple[str, ...], list[int]]()
-
-    for letter_index, letter in enumerate(word):
-      for subword, spans in comb(word[(letter_index + 1):], k - 1, _add_offset=True).items():
-        result.setdefault((letter, *subword), []).extend([span + 1 for span in spans])
-
-    return result
-
-  # print(comb('bar', 1, _add_offset=True))
-  # print(comb('bat', 2, _add_offset=False))
-
-  lambda_ = 0.8
-
-  words_comb = [{ subword: sum(lambda_ ** span for span in spans) for subword, spans in comb(word, 2).items() } for word in words]
-  all_subwords = list(functools.reduce(operator.or_, [set(word_comb.keys()) for word_comb in words_comb], set()))
-
-  values = np.zeros((len(words), len(all_subwords)))
-
-  for word_index, word_comb in enumerate(words_comb):
-    for subword, value in word_comb.items():
-      values[word_index, all_subwords.index(subword)] = value
-
-  import pandas as pd
-
-  print('SUBWORDS')
-  print(pd.DataFrame(values, columns=[''.join(subword) for subword in all_subwords], index=words))
-
-
-  print(values.shape)
-  a = (values ** 2).sum(axis=1)
-  # print(np.sqrt(a[None, :] * a[:, None]).shape)
-
-  similarity = (values[None, :, :] * values[:, None, :]).sum(axis=2) / np.sqrt(a[None, :] * a[:, None])
-
-  print('SIMILARITY')
-  print(pd.DataFrame(similarity, columns=words, index=words))
-
-  # from sklearn.manifold import MDS
-
-  # embedding = MDS(dissimilarity='precomputed', metric=False, normalized_stress=True, n_init=100)
-  # ts = embedding.fit_transform(-similarity)
-
-  # print('MDS')
-  # # print(ts)
-  # print(ts.shape)
-
-  # # print(embedding.dissimilarity_matrix_)
-  # # print(embedding.stress_)
-
-  # fig, ax = plt.subplots()
-
-  # ax.scatter(*ts.T)
-
-  # for i, word in enumerate(words):
-  #   ax.annotate(word, (ts[i, 0], ts[i, 1]))
-
-
-  fig, ax = plt.subplots()
-
-  # im = ax.imshow(similarity, cmap='viridis')
-  im = ax.imshow(np.maximum(similarity, 0.01), cmap='plasma', norm=LogNorm(vmin=0.01, vmax=1))
-  ax.set_xticks(range(len(words)), words, rotation='vertical')
-  ax.set_yticks(range(len(words)), words)
-
-  fig.colorbar(im, ax=ax)
-
-  # import networkx as nx
-  # import string
-
-  # dt = [('len', float)]
-  # A = values.view(dt)
-
-  # G = nx.from_numpy_matrix(A)
-  # G = nx.relabel_nodes(G, dict(zip(range(len(G.nodes())),string.ascii_uppercase)))
-
-  # G = nx.to_agraph(G)
-
-  # G.node_attr.update(color="red", style="filled")
-  # G.edge_attr.update(color="blue", width="2.0")
-
-  # G.draw('distances.png', format='png', prog='neato')
-
-
-  # dist = np.empty(
-  #   (len(words), len(words)),
-  #   dtype=float
-  # )
-
-  # for a, b in itertools.combinations(range(len(words)), 2):
-  #   # print(words_comb[a], words_comb[b])
-  #   subwords = words_comb[a].keys() & words_comb[b].keys()
-
-  #   dist[a, b] = dist[b, a] = 3.0
-  #   # dist[a, b] = dist[b, a] = np.linalg.norm(np.array([len(set(words[a]) & set(words[b])), len(set(words[a]) | set(words[b]))]) / len(words[a])
-
-  # print(dist)
-
-  # x = {}
-
-  # for letter_index, letter in enumerate(words[0]):
-  #   pass
-
-  # subwords = set([subword for word in words for subword in itertools.combinations(word, 2)])
-  # print(subwords)
-
 
 
 # plot1()
 # plot2()
 # plot3()
-plot8()
-# plt.show()
+# plot5a()
+# plot5b()
+# plot6b()
+plot6d()
+plt.show()
