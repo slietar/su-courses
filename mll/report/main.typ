@@ -172,13 +172,13 @@ Les ensembles de test et d'entraînement n'ayant pas la même note moyenne, ils 
 === Régression linéaire
 
 #figure(
-  image("../output/tme2/1.png"),
-  caption: [Coût en fonction de l'itération]
+  image("../output/tme2/2.png"),
+  caption: [Classification par une régression linéaire]
 )
 
 #figure(
-  image("../output/tme2/2.png"),
-  caption: [Données et frontière de décision]
+  image("../output/tme2/1.png"),
+  caption: [Coût en fonction de l'itération et du taux d'apprentissage $epsilon$]
 )
 
 #figure(
@@ -190,13 +190,13 @@ Les ensembles de test et d'entraînement n'ayant pas la même note moyenne, ils 
 === Régression logistique
 
 #figure(
-  image("../output/tme2/4.png"),
-  caption: [Coût en fonction de l'itération]
+  image("../output/tme2/5.png"),
+  caption: [Classification par une régression logistique]
 )
 
 #figure(
-  image("../output/tme2/5.png"),
-  caption: [Données et frontière de décision]
+  image("../output/tme2/4.png"),
+  caption: [Coût en fonction de l'itération]
 )
 
 #figure(
@@ -206,7 +206,7 @@ Les ensembles de test et d'entraînement n'ayant pas la même note moyenne, ils 
 
 #figure(
   image("../output/tme2/7.png"),
-  caption: [Profil de la fonction coût et trajectoire de la descente de gradient]
+  caption: [Classification par une régression logistique sur des données non linéairement séparables]
 )
 
 
