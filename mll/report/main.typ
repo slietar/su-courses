@@ -213,6 +213,35 @@ Les ensembles de test et d'entraînement n'ayant pas la même note moyenne, ils 
 
 = TME 5 – Perceptron et SVMs
 
+== Perceptron et classe `Linéaire`
+
+#figure(
+  image("../output/tme5/1.png"),
+  caption: [Matrices de poids à la fin de l'apprentissage du modèle de reconnaissance de 6~contre~9]
+)
+
+Du fait des poids initiaux aléatoires, la matrice des poids finale $w^((T))$ est illisible et on n'y reconnaît pas de chiffres. En regardant la différence avec la matrice de poids initiale, on remarque néanmoins que le modèle favorise les régions propres au 6 et absentes du 9, et vice-versa. Il reste une grande part d'aléatoire car le modèle n'a pas eu besoin d'optimiser les pixels absents des 6 et 9.
+
+#figure(
+  image("../output/tme5/2.png"),
+  caption: [Matrices de poids à la fin de l'apprentissage du modèle de reconnaissance de 6~contre~tous]
+)
+
+Le modèle de 6 contre tous a moins de poids positifs car il y a moins de pixels propres au 6, et plus de poids négatifs car il y a plus de pixels présents dans les autres chiffres et absents du 6.
+
+#figure(
+  image("../output/tme5/3.png"),
+  caption: [Scores pendant l'apprentissage]
+)
+
+On a fait attention à avoir le même nombre d'exemples dans les deux classes pour les données d'entraînement et de test, par conséquent un score de 0.5 est attendu pour un modèle aléatoire. C'est effectivement le cas à l'époque zéro.
+
+Le second problème est plus difficle, ce qui peut expliquer la convergence plus lente. On n'observe pas de surapprentissage.
+
+
+== Mini-batch et descente stochastique
+
+
 == Projections et pénalisation
 
 === Projection avec biais et projection polynomiale de degré 2

@@ -6,7 +6,6 @@ from sklearn.model_selection import GridSearchCV
 from sklearn.svm import SVC
 
 import itertools
-import operator
 import random
 import re
 import sys
@@ -71,32 +70,42 @@ class Lineaire:
     self.max_iter = max_iter
     self.eps = eps
     self.projection = projection
-    self.w: Optional[np.ndarray] = None
     self.loss = loss
     self.loss_g = loss_g
 
-  def fit(self, x: np.ndarray, y: np.ndarray, test_x: Optional[np.ndarray] = None, test_y: Optional[np.ndarray] = None, /, *, batch_size: Optional[int] = None):
+    self.w: Optional[np.ndarray] = None
+    self.w0: Optional[np.ndarray] = None
+
+  def fit(
+      self,
+      x: np.ndarray,
+      y: np.ndarray,
+      test_x: Optional[np.ndarray] = None,
+      test_y: Optional[np.ndarray] = None,
+      /, *,
+      batch_size: Optional[int] = None,
+      random_weights: bool = False
+  ):
     batch_size_ = batch_size if batch_size is not None else len(y)
 
     scores = np.zeros((self.max_iter + 1, 2))
     px = self.projection(x)
 
-    self.w = np.zeros(px.shape[1])
-    # self.w = np.random.uniform(-1.0, 1.0, px.shape[1])
-    # print(self.loss(w, x, y))
+    if random_weights:
+      self.w0 = np.random.uniform(-1.0, 1.0, px.shape[1])
+      self.w = self.w0.copy()
+    else:
+      self.w = np.zeros(px.shape[1])
 
     test_px = self.projection(test_x) if (test_x is not None) else None
 
     it = 0
     scores[0, 0] = self.score(x, y)
 
-    # batches_x = np.array_split(x, batch_count)
-    # batches_y = np.array_split(y, batch_count)
-
     split = np.arange(batch_size_, len(y), batch_size_)
 
-    if (test_x is not None) and (test_y is not None):
-      scores[0, 1] = self.score(test_x, test_y)
+    if (test_px is not None) and (test_y is not None):
+      scores[0, 1] = self._score_projected(test_px, test_y)
 
     for it in range(self.max_iter):
       random_indices = np.random.permutation(len(y))
@@ -111,9 +120,6 @@ class Lineaire:
         batches_x = batches_x[:-1]
         batches_y = batches_y[:-1]
 
-      # batches_x = [x]
-      # batches_y = [y]
-
       batches_grad = np.array([self.loss_g(self.w, batch_x, batch_y) for batch_x, batch_y in zip(batches_x, batches_y)])
       self.w -= self.eps * batches_grad.mean(axis=0)
 
@@ -126,7 +132,8 @@ class Lineaire:
       if (test_px is not None) and (test_y is not None):
         scores[it + 1, 1] = self._score_projected(test_px, test_y)
 
-    return scores[:(it + 2), :]
+    return scores
+    # return scores[:(it + 2), :]
 
   def _predict_projected(self, px: np.ndarray, /):
     assert self.w is not None
@@ -162,9 +169,13 @@ def get_usps():
 
 
 
-def show_usps(ax: Axes, data):
-  im = ax.imshow(data.reshape((16,16)),interpolation="nearest",cmap="gray")
+def show_usps(ax: Axes, data: np.ndarray):
+  abs_max = max(abs(data.min()), abs(data.max()))
+
+  im = ax.imshow(data.reshape((16, 16)), interpolation='nearest', cmap='RdYlBu_r', vmin=-abs_max, vmax=abs_max)
+
   ax.get_figure().colorbar(im, ax=ax)
+  ax.tick_params('both', bottom=False, left=False, labelbottom=False, labelleft=False)
 
 
 output_path = Path('output/tme5')
@@ -173,81 +184,123 @@ output_path.mkdir(exist_ok=True, parents=True)
 data_path = Path(__file__).parent / 'data'
 
 
-def plot1():
+def plot0():
+  x, y = mltools.gen_arti(data_type=0)
+  lim = mltools.get_lim_for_data_type(data_type=0)
+
+  model = Lineaire(eps=1e-3, max_iter=20)
+  model.fit(x, y)
+
+  fig, ax = plt.subplots()
+
+  mltools.plot_data(ax, x, y)
+
+  assert model.w is not None
+  ax.axline((0.0, 0.0), slope=(-model.w[0] / model.w[1]), color='gray', label='Frontière de décision', linestyle='--')
+
+  ax.set_xlim(*lim)
+  ax.set_ylim(*lim)
+
+  ax.legend()
+
+  with (output_path / '19.png').open('wb') as file:
+    fig.savefig(file)
+
+
+def run_usps(against_all: bool):
   data = get_usps()
+  model = Lineaire(eps=1e-4, max_iter=50)
 
-  def run(against_all: bool):
-    model = Lineaire(eps=1e-3, max_iter=20)
+  train_indices1 = (data.train_y == 6).nonzero()[0]
+  train_indices2 = (data.train_y != 6 if against_all else data.train_y == 9).nonzero()[0]
+  train_index_count = min(len(train_indices1), len(train_indices2))
+  train_indices1 = train_indices1[np.random.permutation(train_index_count)]
+  train_indices2 = train_indices2[np.random.permutation(train_index_count)]
+  train_indices = np.r_[train_indices1, train_indices2]
 
-    train_mask = (data.train_y == 6) | ((data.train_y == 9) if not against_all else True)
-    # train_mask = [True] * len(train_y) # (train_y == 6) | ((train_y == 9) if not against_all else True)
-    train_ax = data.train_x[train_mask, :]
-    train_ay = np.where(data.train_y[train_mask] == 6, 1, -1)
+  train_ax = data.train_x[train_indices, :]
+  train_ay = np.where(data.train_y[train_indices] == 6, 1, -1)
 
-    train_ax += np.random.normal(0, 10.0, train_ax.shape)
+  # train_ax += np.random.normal(0, 10.0, train_ax.shape)
 
-    test_mask = (data.test_y == 6) | ((data.test_y == 9) if not against_all else True)
-    # test_mask = [True] * len(test_y)
-    test_ax = data.test_x[test_mask, :]
-    test_ay = np.where(data.test_y[test_mask] == 6, 1, -1)
-    # print(test_y[test_mask] == 1)
-    # test_ay = np.random.choice([-1, 1], len(test_y[test_mask]), p=[0.5, 0.5]) # np.where(test_y[test_mask] == 1, 1, -1)
+  test_indices1 = (data.test_y == 6).nonzero()[0]
+  test_indices2 = (data.test_y != 6 if against_all else data.test_y == 9).nonzero()[0]
+  test_index_count = min(len(test_indices1), len(test_indices2))
+  test_indices1 = test_indices1[:test_index_count]
+  test_indices2 = test_indices2[:test_index_count]
+  test_indices = np.r_[test_indices1, test_indices2]
 
-    # test_ax += np.random.normal(0, 15.0, test_ax.shape)
+  test_ax = data.test_x[test_indices, :]
+  test_ay = np.where(data.test_y[test_indices] == 6, 1, -1)
 
-    scores = model.fit(train_ax, train_ay, test_ax, test_ay, batch_size=100)
-    # print(scores)
+  # test_mask = (data.test_y == 6) | ((data.test_y == 9) if not against_all else True)
+  # test_ax = data.test_x[test_mask, :]
+  # test_ay = np.where(data.test_y[test_mask] == 6, 1, -1)
 
-    # print((test_y[test_mask] != 6).sum())
-    # print((test_y[test_mask] == 6).sum())
+  # test_ax += np.random.normal(0, 15.0, test_ax.shape)
 
-    # p = model.predict(test_ax)
-    # print((p == 1).sum())
+  scores = model.fit(train_ax, train_ay, test_ax, test_ay, batch_size=None, random_weights=True)
 
-    # print(model.score(train_ax, train_ay))
-    # print(model.score(test_ax, test_ay))
-
-    fig1, ax = plt.subplots()
-
-    show_usps(ax, model.w)
+  return model, scores
 
 
-    fig2, ax = plt.subplots()
+def plot1():
+  np.random.seed(2)
 
-    ax.plot(np.arange(1, scores.shape[0]), scores[1:, 0], label='Entraînement')
-    ax.plot(np.arange(1, scores.shape[0]), scores[1:, 1], label='Test')
-    ax.legend(loc='lower right')
+  model1, scores1 = run_usps(False)
+  model2, scores2 = run_usps(True)
+  models = [model1, model2]
+  all_scores = [scores1, scores2]
+
+  for plot_index, model in enumerate(models):
+    fig, axs = plt.subplots(ncols=2)
+    fig.set_figheight(3.0)
+
+    show_usps(axs[0], model.w)
+    show_usps(axs[1], model.w - model.w0)
+
+    axs[0].set_title('$w^{(T)}$')
+    axs[1].set_title('$w^{(T)} - w^{(0)}$')
+
+    with (output_path / f'{1 + plot_index}.png').open('wb') as file:
+      fig.savefig(file)
+
+
+  fig, axs = plt.subplots(nrows=2, squeeze=False)
+  fig.set_figheight(5.0)
+  fig.subplots_adjust(left=0.2, right=0.8)
+
+  ax: Axes
+
+  for ax_index, (model, scores, ax) in enumerate(zip(models, all_scores, axs.flat)):
+    offset = 0
+    ax.plot(np.arange(offset, scores.shape[0]), scores[offset:, 0], label=('Entraînement' if ax_index < 1 else None))
+    ax.plot(np.arange(offset, scores.shape[0]), scores[offset:, 1], label=('Test' if ax_index < 1 else None))
 
     ax.set_xlabel('Époque')
     ax.set_ylabel('Score')
 
-    return fig1, fig2
+    ax.set_title(['6 contre 9', '6 contre tous'][ax_index])
 
+    ax.grid()
+    ax.xaxis.set_major_locator(MaxNLocator(integer=True))
 
-  fig1, fig2 = run(False)
+  utils.filter_axes(axs)
 
-  with (output_path / '1.png').open('wb') as file:
-    fig1.savefig(file)
-
-  with (output_path / '2.png').open('wb') as file:
-    fig2.savefig(file)
-
-
-  fig1, fig2 = run(True)
+  fig.legend()
 
   with (output_path / '3.png').open('wb') as file:
-    fig1.savefig(file)
+    fig.savefig(file)
 
-  with (output_path / '4.png').open('wb') as file:
-    fig2.savefig(file)
 
-  # plt.show()
+def plot1a():
+  pass
 
 
 def plot2():
-  fig, axs = plt.subplots(1, 2, figsize=(config.fig_width, 3.2))
+  fig, axs = plt.subplots(ncols=2, nrows=1)
+  fig.set_figheight(3.2)
 
-  # for plot_index, (data_type, proj) in enumerate(itertools.product([1, 2], [proj_biais, proj_poly])):
   for ax_index, (ax, (data_type, proj)) in enumerate(zip(axs, itertools.product([1, 2], [proj_biais, proj_poly]))):
     x, y = mltools.gen_arti(data_type=data_type, epsilon=0.1)
     lim = mltools.get_lim_for_data_type(data_type)
@@ -739,12 +792,12 @@ def plot8():
     fig.savefig(file)
 
 
-
-# plot1()
+# plot0()
+plot1()
 # plot2()
 # plot3()
 # plot5a()
 # plot5b()
 # plot6b()
-plot6d()
+# plot6d()
 plt.show()
