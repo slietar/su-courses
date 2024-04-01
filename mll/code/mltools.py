@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 from matplotlib import cm
 
 
-def plot_data(ax: Axes, data, labels=None, *, highlight: Optional[Sequence[bool]] = None):
+def plot_data(ax: Axes, data, labels=None, *, alpha: np.ndarray | float = 1.0, highlight: Optional[Sequence[bool]] = None):
     """
     Affiche des donnees 2D
     :param data: matrice des donnees 2d
@@ -23,6 +23,7 @@ def plot_data(ax: Axes, data, labels=None, *, highlight: Optional[Sequence[bool]
         ax.scatter(
             data[labels == l, 0],
             data[labels == l, 1],
+            alpha=(alpha[labels == l] if isinstance(alpha, np.ndarray) else alpha),
             c=f'C{i}',
             marker=marks[i],
         )
@@ -32,6 +33,7 @@ def plot_data(ax: Axes, data, labels=None, *, highlight: Optional[Sequence[bool]
             ax.scatter(
                 data[highlight, 0][labels[highlight] == l],
                 data[highlight, 1][labels[highlight] == l],
+                alpha=(alpha[labels == l] if isinstance(alpha, np.ndarray) else alpha),
                 facecolors='none',
                 edgecolors='black',
                 s=[86.0, 30.0][i],

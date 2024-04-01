@@ -461,7 +461,7 @@ Les données de type 0 sont linéairement séparables et le boosting ne n'a pas 
 
 #figure(
   image("../output/tme6/1.png"),
-  caption: [Classification sur les données de type 1. À gauche, les classifications individuelles avec la frontière de décision en gris. L'opacité correspond aux poids $D_t (i)$ utilisés par le classifieur. Les points en vert sont correctement classés et ceux en rouge mal classés. À droite, la classification en utilisant tous les classifieurs jusqu'à celui donné.]
+  caption: [Classification sur les données de type 1. À gauche, les classifications individuelles. L'opacité correspond aux poids $D_t (i)$ utilisés par le classifieur. À droite, la classification en utilisant tous les classifieurs jusqu'à celui donné.]
 )
 
 #figure(

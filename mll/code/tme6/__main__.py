@@ -1,6 +1,7 @@
+import functools
 import sys
 from pathlib import Path
-from typing import Callable
+from typing import Callable, Optional
 
 import numpy as np
 from matplotlib import pyplot as plt
@@ -51,8 +52,9 @@ class BoostingClassifier:
 
     return all_sample_weights, model_predictions, es, zs
 
-  def predict(self, x: np.ndarray, /):
-    return np.sign((self.classifier_weights * np.asarray([classifier.predict(x) for classifier in self.classifiers]).T).sum(axis=1))
+  def predict(self, x: np.ndarray, /, *, classifier_count: Optional[int] = None):
+    sl = slice(None, classifier_count) if classifier_count is not None else slice(None)
+    return np.sign((self.classifier_weights[sl] * np.asarray([classifier.predict(x) for classifier in self.classifiers[sl]]).T).sum(axis=1))
 
 
 output_path = Path('output/tme6')
@@ -172,6 +174,7 @@ def plot3():
   np.random.seed(1)
 
   x, y = mltools.gen_arti(data_type=1)
+  lim = mltools.get_lim_for_data_type(data_type=1)
 
   m = (x[:, 0] > 0) | (x[:, 1] > 0)
   x = x[m, :]
@@ -180,7 +183,7 @@ def plot3():
 
   model = BoostingClassifier(
     classifier_count=16,
-    create_classifier=(lambda: DecisionTreeClassifier(max_depth=3))
+    create_classifier=(lambda: DecisionTreeClassifier(max_depth=1))
   )
 
   sample_weights, model_predictions, es, zs = model.fit(x, y)
@@ -192,73 +195,29 @@ def plot3():
   for classifier_index, classifier in enumerate(model.classifiers[:displayed_classifier_count]):
     ax = axs[classifier_index, 0]
 
-    ax.set_xlim(-2.5, 2.5)
-    ax.set_ylim(-2.5, 2.5)
-
+    ax.set_xlim(*lim)
+    ax.set_ylim(*lim)
     ax.set_title(f'Classifieur {classifier_index + 1}')
 
-    # inv = ax.transData.inverted()
+    norm = Normalize()
 
-    tree = classifier.tree_
-    threshold = tree.threshold[0]
-    left_cl_index = 0 if tree.value[1][0, 0] > 0.5 else 1
-    right_cl_index = 0 if tree.value[2][0, 0] > 0.5 else 1
-
-    match tree.feature[0]:
-      case 0:
-        ax.scatter([threshold - 0.3], [-2], c='gray', marker=markers[left_cl_index])
-        ax.scatter([threshold + 0.3], [-2], c='gray', marker=markers[right_cl_index])
-        ax.axvline(threshold, color='gray', linestyle='--')
-      case 1:
-        ax.scatter([-2], [threshold - 0.3], c='gray', marker=markers[left_cl_index])
-        ax.scatter([-2], [threshold + 0.3], c='gray', marker=markers[right_cl_index])
-        ax.axhline(threshold, color='gray', linestyle='--')
-
-    for cl_index, cl in enumerate([-1, 1]):
-      mask = (y * cl) > 0
-      norm = Normalize()
-
-      ax.scatter(
-        x[mask, 0],
-        x[mask, 1],
-        alpha=((norm(sample_weights[mask, classifier_index]) * 0.9 + 0.1) if classifier_index > 0 else 1.0),
-        c=np.array(['r', 'g'])[((classifier.predict(x[mask, :]) * y[mask]) > 0).astype(int)],
-        marker=markers[cl_index]
-      )
-
+    utils.plot_boundary_contour(ax, classifier.predict, x_range=lim, y_range=lim)
+    mltools.plot_data(ax, x, y, alpha=((norm(sample_weights[:, classifier_index]) * 0.9 + 0.1) if classifier_index > 0 else 1.0))
 
     ax1 = axs[classifier_index, 1]
 
-    ax1.set_xlim(-2.5, 2.5)
-    ax1.set_ylim(-2.5, 2.5)
+    ax.set_xlim(*lim)
+    ax.set_ylim(*lim)
+
+    utils.plot_boundary_contour(ax1, functools.partial(model.predict, classifier_count=(classifier_index + 1)), x_range=lim, y_range=lim)
+    mltools.plot_data(ax1, x, y)
 
     if classifier_index == 0:
       ax1.set_title('Classifieur 1')
     else:
       ax1.set_title(f'Classifieurs 1 à {classifier_index + 1}')
 
-    for cl_index, cl in enumerate([-1, 1]):
-      mask = (y * cl) > 0
-
-      ax1.scatter(
-        x[mask, 0],
-        x[mask, 1],
-        c=np.array(['r', 'g'])[((model_predictions[:, classifier_index][mask] * y[mask]) > 0).astype(int)],
-        marker=markers[cl_index]
-      )
-
-  for ax in axs[:-1, :].ravel():
-    ax.tick_params(axis='x', bottom=False, labelbottom=False)
-
-  for ax in axs[:, 1].ravel():
-    ax.tick_params(axis='y', left=False, labelleft=False)
-
-  for ax in axs[-1, :].ravel():
-    ax.set_xlabel('X₁')
-
-  for ax in axs[:, 0].ravel():
-    ax.set_ylabel('X₂')
-
+  utils.filter_axes(axs)
   fig.subplots_adjust(bottom=0.08, top=0.95)
 
   with (output_path / '1.png').open('wb') as file:
@@ -282,5 +241,7 @@ def plot3():
   with (output_path / '2.png').open('wb') as file:
     plt.savefig(file)
 
-plot1()
+# plot1()
+# plot2()
+plot3()
 # plt.show()

@@ -4,7 +4,6 @@ import unicodedata
 from matplotlib.axes import Axes
 from matplotlib.patches import Rectangle
 import numpy as np
-# from sklearn.tree import Tree
 
 
 light_blue = (0xb2 / 0xff, 0xb2 / 0xff, 0xff / 0xff)
@@ -123,6 +122,6 @@ def plot_boundary_contour(ax: Axes, fn: Callable[[np.ndarray], np.ndarray], *, l
 
   ax.contourf(x, y, fn(g).reshape(len(x_values), len(y_values)), colors=[light_blue, light_red], levels=[-2, 0, 2])
 
-def remove_accents(input_str):
+def remove_accents(input_str: str):
   nfkd_form = unicodedata.normalize('NFKD', input_str)
   return ''.join([c for c in nfkd_form if not unicodedata.combining(c)])
