@@ -241,6 +241,13 @@ Le second problème est plus difficle, ce qui peut expliquer la convergence plus
 
 == Mini-batch et descente stochastique
 
+#figure(
+  image("../output/tme5/4.png"),
+  caption: [Score de test avec différentes tailles de batch $m$]
+)
+
+On n'observe pas de différence significative de la vitesse de convergence en fonction de la taille de batch. Il en de même en ajoutant un bruit gaussien aux données d'entraînement.
+
 
 == Projections et pénalisation
 

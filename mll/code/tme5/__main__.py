@@ -115,13 +115,18 @@ class Lineaire:
       # batches_x = batches_x[:1]
       # batches_y = batches_y[:1]
 
-      # Remove the last batch because it has a lower size
-      if len(batches_y) > 1:
-        batches_x = batches_x[:-1]
-        batches_y = batches_y[:-1]
+      # # Remove the last batch because it has a lower size
+      # if len(batches_y) > 1:
+      #   batches_x = batches_x[:-1]
+      #   batches_y = batches_y[:-1]
 
-      batches_grad = np.array([self.loss_g(self.w, batch_x, batch_y) for batch_x, batch_y in zip(batches_x, batches_y)])
-      self.w -= self.eps * batches_grad.mean(axis=0)
+      # print([len(batch) for batch in batches_y])
+
+      for batch_x, batch_y in zip(batches_x, batches_y):
+        self.w -= self.eps * self.loss_g(self.w, batch_x, batch_y)
+
+      # batches_grad = np.array([self.loss_g(self.w, batch_x, batch_y) for batch_x, batch_y in zip(batches_x, batches_y)])
+      # self.w -= self.eps * batches_grad.mean(axis=0)
 
       # print(self.loss(w, x, y))
       # print(self.loss(w, x, y), w, self.loss_g(w, x, y))
@@ -207,21 +212,37 @@ def plot0():
     fig.savefig(file)
 
 
-def run_usps(against_all: bool):
+def run_usps(
+  *,
+  against_all: bool,
+  batch_size: Optional[int] = None,
+  noise_sigma: float = 1.0,
+  noise_weight: float = 0.0
+):
+  np.random.seed(2)
+
   data = get_usps()
   model = Lineaire(eps=1e-4, max_iter=50)
 
   train_indices1 = (data.train_y == 6).nonzero()[0]
   train_indices2 = (data.train_y != 6 if against_all else data.train_y == 9).nonzero()[0]
   train_index_count = min(len(train_indices1), len(train_indices2))
-  train_indices1 = train_indices1[np.random.permutation(train_index_count)]
-  train_indices2 = train_indices2[np.random.permutation(train_index_count)]
+  train_indices1 = train_indices1[np.random.permutation(len(train_indices1))[:train_index_count]]
+  train_indices2 = train_indices2[np.random.permutation(len(train_indices2))[:train_index_count]]
   train_indices = np.r_[train_indices1, train_indices2]
 
   train_ax = data.train_x[train_indices, :]
   train_ay = np.where(data.train_y[train_indices] == 6, 1, -1)
 
-  # train_ax += np.random.normal(0, 10.0, train_ax.shape)
+  train_ax = train_ax + noise_weight * np.random.normal(0, noise_sigma, train_ax.shape)
+
+  # fig, ax = plt.subplots(ncols=3, nrows=3)
+
+  # for i, ax in enumerate(ax.flat):
+  #   show_usps(ax, train_ax[i, :])
+
+  # plt.show()
+  # sys.exit()
 
   test_indices1 = (data.test_y == 6).nonzero()[0]
   test_indices2 = (data.test_y != 6 if against_all else data.test_y == 9).nonzero()[0]
@@ -233,22 +254,15 @@ def run_usps(against_all: bool):
   test_ax = data.test_x[test_indices, :]
   test_ay = np.where(data.test_y[test_indices] == 6, 1, -1)
 
-  # test_mask = (data.test_y == 6) | ((data.test_y == 9) if not against_all else True)
-  # test_ax = data.test_x[test_mask, :]
-  # test_ay = np.where(data.test_y[test_mask] == 6, 1, -1)
-
-  # test_ax += np.random.normal(0, 15.0, test_ax.shape)
-
-  scores = model.fit(train_ax, train_ay, test_ax, test_ay, batch_size=None, random_weights=True)
+  np.random.seed(2)
+  scores = model.fit(train_ax, train_ay, test_ax, test_ay, batch_size=batch_size, random_weights=True)
 
   return model, scores
 
 
-def plot1():
-  np.random.seed(2)
-
-  model1, scores1 = run_usps(False)
-  model2, scores2 = run_usps(True)
+def plot1a():
+  model1, scores1 = run_usps(against_all=False)
+  model2, scores2 = run_usps(against_all=True)
   models = [model1, model2]
   all_scores = [scores1, scores2]
 
@@ -293,8 +307,25 @@ def plot1():
     fig.savefig(file)
 
 
-def plot1a():
-  pass
+def plot1b():
+  batch_sizes = [1, 10, 100, 500, None]
+
+  fig, ax = plt.subplots()
+  fig.subplots_adjust(bottom=0.15)
+
+  for batch_size in batch_sizes:
+    model, scores = run_usps(against_all=True, batch_size=batch_size, noise_weight=0.5)
+    ax.plot(scores[:, 1], label=(f'm = {batch_size}' if batch_size is not None else 'm = 1328 (batch complet)'))
+
+  ax.set_xlabel('Époque')
+  ax.set_ylabel('Score')
+
+  ax.grid()
+  ax.legend(loc='lower right')
+
+  with (output_path / '4.png').open('wb') as file:
+    fig.savefig(file)
+
 
 
 def plot2():
@@ -793,7 +824,8 @@ def plot8():
 
 
 # plot0()
-plot1()
+# plot1a()
+plot1b()
 # plot2()
 # plot3()
 # plot5a()
