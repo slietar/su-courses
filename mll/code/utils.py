@@ -125,3 +125,26 @@ def plot_boundary_contour(ax: Axes, fn: Callable[[np.ndarray], np.ndarray], *, l
 def remove_accents(input_str: str):
   nfkd_form = unicodedata.normalize('NFKD', input_str)
   return ''.join([c for c in nfkd_form if not unicodedata.combining(c)])
+
+
+SUPERSCRIPT_CHARS = {
+  '0': '\u2070',
+  '1': '\u00b9',
+  '2': '\u00b2',
+  '3': '\u00b3',
+  '4': '\u2074',
+  '5': '\u2075',
+  '6': '\u2076',
+  '7': '\u2077',
+  '8': '\u2078',
+  '9': '\u2079',
+  '-': '\u207b'
+}
+
+def format_scientific(value: float, *, precision: int = 2):
+  left, right = f'{value:.{precision}e}'.split('e')
+
+  exp_sign = (SUPERSCRIPT_CHARS['-'] if right[0] == '-' else '')
+  exp = ''.join(SUPERSCRIPT_CHARS[digit] for digit in right[1:].lstrip('0'))
+
+  return f'{left} \u00b7 10' + exp_sign + exp

@@ -9,12 +9,13 @@ import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib import colormaps
 from matplotlib.axes import Axes
+from matplotlib.colors import LogNorm
 from matplotlib.rcsetup import cycler
 from scipy.interpolate import interp1d
 from scipy.optimize import minimize_scalar
+from tqdm import tqdm
 
-
-from .. import config
+from .. import config, utils
 
 
 POI_FILENAME = Path(__file__).parent / 'data/poi-paris.pkl'
@@ -47,10 +48,15 @@ class Histogramme(Density):
     self.edges: Optional[list[np.ndarray]] = None
     self.hist: Optional[np.ndarray] = None
 
+  @property
+  def _bin_volume(self):
+    assert self.edges is not None
+    return (self.edges[0][1] - self.edges[0][0]) * (self.edges[1][1] - self.edges[1][0])
+
   def fit(self, x: np.ndarray):
     self.hist, self.edges = np.histogramdd(x, bins=self.steps, density=True)
     # bin_volume = (self.edges[0][1] - self.edges[0][0]) * (self.edges[1][1] - self.edges[1][0])
-    # self.hist *= bin_volume
+    # self.hist *= self._bin_volume
 
   def predict(self, x: np.ndarray):
     assert self.edges is not None
@@ -70,7 +76,7 @@ class Histogramme(Density):
 
 
 def kernel_uniform(x: np.ndarray):
-  return np.where(np.any(np.abs(x) <= 0.5, axis=-1), 1.0, 0.0)
+  return np.where((np.abs(x) <= 0.5).all(axis=-1), 1.0, 0.0)
 
 def kernel_gaussian(x: np.ndarray):
   return np.exp(-0.5 * (x ** 2).sum(axis=-1)) / ((2 * np.pi) ** (x.shape[-1] * 0.5))
@@ -164,17 +170,22 @@ np.random.seed(42)
 # Liste des POIs : furniture_store, laundry, bakery, cafe, home_goods_store, clothing_store, atm, lodging, night_club, convenience_store, restaurant, bar
 # La fonction charge la localisation des POIs dans geo_mat et leur note.
 geo_bars_unpermuted, notes_bars_raw_unpermuted = load_poi('bar')
-geo_mat_rest, notes_rest = load_poi('restaurant')
+geo_mat_rest, _ = load_poi('restaurant')
+geo_clubs, _ = load_poi('night_club')
 
 bars_permutation = np.random.permutation(geo_bars_unpermuted.shape[0])
 
 geo_bars = geo_bars_unpermuted[bars_permutation, :]
 notes_bars_raw = notes_bars_raw_unpermuted[bars_permutation]
 
-first_test_index = int(0.8 * len(geo_bars))
+bars_first_test_index = int(0.8 * len(geo_bars))
+clubs_first_test_index = int(0.8 * len(geo_clubs))
 
-geo_bars_training = geo_bars[:first_test_index, :]
-geo_bars_test = geo_bars[first_test_index:, :]
+geo_bars_training = geo_bars[:bars_first_test_index, :]
+geo_bars_test = geo_bars[bars_first_test_index:, :]
+
+geo_clubs_training = geo_clubs[:clubs_first_test_index, :]
+geo_clubs_test = geo_clubs[clubs_first_test_index:, :]
 
 
 indices_noted_bars = notes_bars_raw >= 0
@@ -264,115 +275,101 @@ def plot1():
 def plot2():
   fig, axs = plt.subplots(2, 2)
 
-  for bin_count, ax in zip([5, 10, 25, 50], axs.flatten()):
+  for bin_count, ax in zip([5, 10, 25, 50], axs.flat):
     ax: Axes
     ax.axis('off')
-    ax.set_title(f'$N = {bin_count}$')
+    ax.set_title(f'N = {bin_count}')
 
     hist = Histogramme(bin_count)
     hist.fit(geo_bars)
 
+    # bin_volume = (hist.edges[0][1] - hist.edges[0][0]) * (hist.edges[1][1] - hist.edges[1][0])
+    # print((hist.hist * bin_volume).sum())
+
     res, xlin, ylin = get_density2D(hist, geo_bars, bin_count)
     xx, yy = np.meshgrid(xlin, ylin)
 
-    ax.scatter(geo_bars[:, 0], geo_bars[:, 1], alpha=0.8, s=3)
     plot_map(ax)
-    # plt.colorbar()
-    ax.contour(xx, yy, res, 20)
+    im = ax.contourf(xx, yy, res, alpha=0.6, levels=10)
 
-  # fig.subplots_adjust(left=0., right=1.0)
+    fig.colorbar(im, ax=ax)
+
+  fig.subplots_adjust(bottom=0.02)
 
   with (output_path / '2.png').open('wb') as file:
     fig.savefig(file)
 
 
-def plot3():
-  fig, ax = plt.subplots()
-  bin_count = 20
-
-  ax.axis('off')
-  ax.set_title(f'$N = {bin_count}$')
-
-  hist = Histogramme(bin_count)
-  hist.fit(geo_bars)
-
-  res, xlin, ylin = get_density2D(hist, geo_bars, bin_count)
-  xx, yy = np.meshgrid(xlin, ylin)
-
-  plot_map(ax)
-  ax.scatter(geo_bars[:, 0], geo_bars[:, 1], alpha=0.8, s=0.5)
-  im = plot_distrib(ax, res)
-  ax.contour(xx, yy, res, 20)
-
-  fig.colorbar(im)
-
-  with (output_path / '3.png').open('wb') as file:
-    fig.savefig(file)
-
-
 def plot4():
-  steps_list = np.arange(1, 30, 1)
-  likelihoods = np.empty((len(steps_list), 2))
+  for plot_index, (training, test) in enumerate([
+    (geo_bars_training, geo_bars_test),
+    (geo_clubs_training, geo_clubs_test)
+  ]):
+    steps_list = np.arange(1, 30, 1)
+    likelihoods = np.empty((len(steps_list), 2))
 
-  for index, steps in enumerate(steps_list):
-    h = Histogramme(steps=steps)
-    h.fit(geo_bars_training)
+    for index, steps in enumerate(steps_list):
+      h = Histogramme(steps=steps)
+      h.fit(training)
 
-    likelihoods[index, 0] = h.score(geo_bars_training) / geo_bars_training.shape[0]
-    likelihoods[index, 1] = h.score(geo_bars_test) / geo_bars_test.shape[0]
+      likelihoods[index, 0] = h.score(training) / training.shape[0]
+      likelihoods[index, 1] = h.score(test) / test.shape[0]
 
-  fig, ax = plt.subplots()
+    fig, ax = plt.subplots()
 
-  ax.plot(steps_list, likelihoods[:, 0], label='Entraînement')
-  ax.plot(steps_list, likelihoods[:, 1], label='Test')
+    ax.plot(steps_list, likelihoods[:, 0], label='Entraînement')
+    ax.plot(steps_list, likelihoods[:, 1], label='Test')
 
-  ax.set_xlabel('Nombre de bins')
-  ax.set_ylabel('Vraisemblance moyenne')
-  ax.grid()
+    ax.set_xlabel('Nombre de bins N')
+    ax.set_ylabel('Vraisemblance moyenne')
+    ax.grid()
 
-  ax.legend()
+    ax.legend(loc='lower left')
 
-  with (output_path / '4.png').open('wb') as file:
-    fig.savefig(file)
+    with (output_path / f'{3 + plot_index}.png').open('wb') as file:
+      fig.savefig(file)
 
-  print('Bin count with maximum likelihood:', likelihoods[:, 1].argmax())
+    print('Bin count with maximum likelihood:', likelihoods[:, 1].argmax())
 
 
 def plot5():
-  fig, ax = plt.subplots()
-  ax.axis('off')
+  for plot_index, (kernel, sigmas) in enumerate([
+    (kernel_gaussian, [5e-4, 1e-3, 1e-2, 5e-1]),
+    (kernel_uniform, [1e-4, 1e-3, 1e-2, 5e-2])
+  ]):
+    fig, axs = plt.subplots(2, 2)
 
-  density = KernelDensity(kernel_uniform, sigma=0.01)
-  density.fit(geo_bars)
+    for sigma, ax in zip(sigmas, axs.flat):
+      ax: Axes
+      ax.axis('off')
+      ax.set_title(f'σ = {utils.format_scientific(sigma, precision=0)}')
 
-  plot_density(density, ax, bin_count=10, color_bar=True)
+      hist = KernelDensity(kernel, sigma=sigma)
+      hist.fit(geo_bars)
 
-  with (output_path / '5.png').open('wb') as file:
-    fig.savefig(file)
+      res, xlin, ylin = get_density2D(hist, geo_bars)
+      xx, yy = np.meshgrid(xlin, ylin)
 
+      plot_map(ax)
+      im = ax.contourf(xx, yy, res, alpha=0.6, levels=10)
 
-def plot6():
-  fig, ax = plt.subplots()
-  ax.axis('off')
+      fig.colorbar(im, ax=ax)
 
-  density = KernelDensity(kernel_gaussian, sigma=0.01)
-  density.fit(geo_bars)
+    fig.subplots_adjust(bottom=0.02)
 
-  plot_density(density, ax, bin_count=10, color_bar=True)
-
-  with (output_path / '6.png').open('wb') as file:
-    fig.savefig(file)
+    with (output_path / f'{5 + plot_index}.png').open('wb') as file:
+      fig.savefig(file)
 
 
 def plot7():
-  for plot_name, kernel, bounds in [
-    (7, kernel_gaussian, (0.0005, 0.1)),
-    (8, kernel_uniform, (0.00001, 0.1))
-  ]:
+  for plot_index, (kernel, bounds) in enumerate([
+    (kernel_gaussian, (0.0005, 0.1)),
+    (kernel_uniform, (0.00001, 0.1))
+  ]):
     sigma_list = np.exp(np.linspace(np.log(bounds[0]), np.log(bounds[1]), 20))
     likelihoods = np.empty((len(sigma_list), 2))
 
-    for index, sigma in enumerate(sigma_list):
+    for index, sigma in tqdm(list(enumerate(sigma_list))):
       h = KernelDensity(kernel, sigma=sigma)
       h.fit(geo_bars_training)
 
@@ -381,7 +378,7 @@ def plot7():
 
     f = interp1d(sigma_list, likelihoods[:, 1], kind='cubic')
     sigma_max = minimize_scalar(lambda x: -f(x), bounds=(sigma_list[0], sigma_list[-1]))
-    print('Gaussian/uniform kernel sigma with maximum likelihood:', sigma_list[likelihoods[:, 1].argmax()], sigma_max.x)
+    print(f'{["Gaussian", "uniform"][plot_index]} kernel sigma with maximum likelihood: {sigma_list[likelihoods[:, 1].argmax()]:.3e}, {sigma_max.x:.3e}')
 
     fig, ax = plt.subplots()
 
@@ -389,28 +386,31 @@ def plot7():
     ax.plot(sigma_list, likelihoods[:, 1], label='Test')
     # ax.axvline(sigma_max.x, color='silver', linestyle='--')
 
-    ax.set_xlabel(r'$\sigma$')
+    ax.set_xlabel('Hyperparamètre σ')
     ax.set_ylabel('Vraisemblance moyenne')
     ax.set_xscale('log')
     ax.grid()
 
     ax.legend()
 
-    with (output_path / f'{plot_name}.png').open('wb') as file:
+    with (output_path / f'{7 + plot_index}.png').open('wb') as file:
       fig.savefig(file)
 
 
 def plot9():
   fig, ax = plt.subplots()
+  fig.set_figheight(3.5)
+  fig.subplots_adjust(bottom=0.02)
+
   plot_map(ax)
 
-  cmap = colormaps['RdYlGn']
-  norm = plt.Normalize(0, 5) # type: ignore
-
   ax.axis('off')
-  ax.scatter(geo_noted_bars[:, 0], geo_noted_bars[:, 1], color=cmap(norm(notes_bars)), s=0.5)
+  im = ax.scatter(geo_noted_bars[:, 0], geo_noted_bars[:, 1], c=notes_bars, cmap='RdYlGn', s=0.5, vmin=0, vmax=5)
 
-  fig.colorbar(plt.cm.ScalarMappable(cmap=cmap, norm=norm), ax=ax, label='Note')
+  cbar = fig.colorbar(im, ax=ax)
+
+  cbar.ax.get_yaxis().labelpad = 15
+  cbar.ax.set_ylabel('Note', rotation=270)
 
   with (output_path / '9.png').open('wb') as file:
     fig.savefig(file)
@@ -424,7 +424,7 @@ def plot10():
     sigma_list = np.exp(np.linspace(np.log(bounds[0]), np.log(bounds[1]), 30))
     errors = np.empty((len(sigma_list), 2))
 
-    for index, sigma in enumerate(sigma_list):
+    for index, sigma in tqdm(list(enumerate(sigma_list))):
       nadaraya = Nadaraya(kernel, sigma=sigma)
       nadaraya.fit(geo_noted_bars_training, notes_bars_training)
 
@@ -436,14 +436,14 @@ def plot10():
 
     f = interp1d(sigma_list, errors[:, 1], kind='cubic')
     sigma_min = minimize_scalar(f, bounds=(sigma_list[0], sigma_list[-1]))
-    print('Gaussian/uniform kernel sigma with minimum error:', sigma_list[errors[:, 1].argmin()], sigma_min.x)
+    print(f'Gaussian/uniform kernel sigma with minimum error: {sigma_list[errors[:, 1].argmin()]:.3e}, {sigma_min.x:.3e}')
 
     fig, ax = plt.subplots()
 
     ax.plot(sigma_list, errors[:, 0], label='Entraînement')
     ax.plot(sigma_list, errors[:, 1], label='Test')
 
-    ax.set_xlabel(r'$\sigma$')
+    ax.set_xlabel('Hyperparamètre σ')
     ax.set_ylabel('Erreur moyenne')
     ax.set_xscale('log')
     ax.grid()
@@ -457,12 +457,10 @@ def plot10():
   # print(((notes_bars_training.mean() - notes_bars_training) ** 2).mean())
 
 
-plot1()
-plot2()
-plot3()
-plot4()
+# plot1()
+# plot2()
+# plot4()
 plot5()
-plot6()
-plot7()
-plot9()
-plot10()
+# plot7()
+# plot9()
+# plot10()

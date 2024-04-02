@@ -3,6 +3,7 @@
 #show heading.where(level: 1): set text(size: 18pt)
 #show heading.where(level: 2): set text(size: 16pt)
 #show heading.where(level: 2): it => pad(y: 6pt, it.body)
+#show heading.where(level: 3): set text(size: 12pt)
 #show heading: set text(font: "Helvetica Now Display")
 #show raw: set text(font: "Menlo")
 
@@ -27,9 +28,7 @@
 
 == Introduction
 
-Dans la classe `Density`, on explicite le fait que la classe soit abstraite, on ajoute des signatures aux méthodes et on implémente la méthode ```py Density.score()```.
-
-Le score est calculé comme $sum_(i) log(y_i)$. L'ajout de $10^(-10)$ aux prédictions permet d'éviter que les valeurs nulles ne causent un score infini.
+On implémente la méthode ```py Density.score()``` :
 
 ```py
 from abc import ABC, abstractmethod
@@ -47,12 +46,14 @@ class Density(ABC):
     return np.log(np.maximum(self.predict(data), 1e-10)).sum()
 ```
 
+Le score est calculé comme $sum_(i) log(y_i)$. L'ajout de $10^(-10)$ aux prédictions permet d'éviter que les valeurs nulles ne résultent en un score infini.
+
 
 == Données
 
 #figure(
   image("../output/tme1/1.png"),
-  caption: [Position des bars et restaurants dans Paris]
+  caption: [Bars et restaurants dans Paris]
 )
 
 
@@ -61,6 +62,8 @@ class Density(ABC):
 On utilise #link("https://numpy.org/doc/stable/reference/generated/numpy.digitize.html")[```py np.digitize()```] pour trouver les bins auxquelles appartiennent les données.
 
 ```py
+from typing import Optional
+
 class Histogramme(Density):
   def __init__(self, steps: int = 10):
     super().__init__()
@@ -85,23 +88,34 @@ class Histogramme(Density):
   caption: [Estimation de la densité de probabilité de bars, pour différents nombres de bins $N$]
 )
 
+La discrétisation semble meilleure pour un nombre de bin $N$ entre 10 et 25. On a bien une loi de densité car la somme des probabilités de l'estimateur sur toute la grille donne une valeur de 1.
 
-On utilise un ensemble de test de 20 % des points et un ensemble d'entraînement avec les 80 % restants. La vraisemblance est maximale pour $N tilde.eq 10$ bins. Elle augmente lorsqu'il y a faible nombre de bins, puis diminue en raison du surentraînement.
+On utilise un ensemble de test de 20~% des points et un ensemble d'entraînement avec les~80 % restants.
 
+#figure(
+  image("../output/tme1/3.png"),
+  caption: [Vraisemblance pour les bars en fonction du nombre de bins]
+)
+
+Pour les bars, la vraisemblance est maximale pour $N tilde.eq 15$ bins. Elle augmente lorsqu'il y a faible nombre de bins, puis diminue en raison du surentraînement.
 
 #figure(
   image("../output/tme1/4.png"),
-  caption: [Vraisemblance en fonction du nombre de bins $N$]
+  caption: [Vraisemblance pour les boîtes de nuit en fonction du nombre de bins]
 )
+
+Pour les boîtes de nuit, plus rares, la vraisemblance est maximale pour $N tilde.eq 5$ bins.
 
 
 == Méthode à noyaux
+
+=== Implémentation
 
 On implémente les noyaux :
 
 ```py
 def kernel_uniform(x: np.ndarray):
-  return np.where(np.any(np.abs(x) <= 0.5, axis=-1), 1.0, 0.0)
+  return np.where((np.abs(x) <= 0.5).all(axis=-1), 1.0, 0.0)
 
 def kernel_gaussian(x: np.ndarray, d: int = 2):
   return np.exp(-0.5 * (np.linalg.norm(x, axis=-1) ** 2)) / ((2 * np.pi) ** (d * 0.5))
@@ -128,20 +142,37 @@ class KernelDensity(Density):
     return self.kernel((data[:, None, :] - self.x[None, :, :]) / self.sigma).sum(axis=1) / (self.sigma ** self.x.shape[1]) / self.x.shape[0]
 ```
 
+=== Noyau gaussien
+
 #figure(
-  image("../output/tme1/7.png"),
-  caption: [Vraisemblance avec le noyau gaussien en fonction de $sigma$]
+  image("../output/tme1/5.png"),
+  caption: [Vraisemblance pour les bars avec le noyau gaussien en fonction de $sigma$]
 )
 
-La vraisemblance est maximale avec le noyau gaussien sur les données de test est obtenue avec $sigma = 2.02 dot.op 10^(-3)$.
+Le seul hyperparamètre est $sigma$, qui contrôle la largeur du noyau. Sa valeur semble optimale entre~$10^(-3)$ et $10^(-2)$.
 
+#figure(
+  image("../output/tme1/7.png"),
+  caption: [Vraisemblance pour les bars avec le noyau gaussien en fonction de $sigma$]
+)
+
+La vraisemblance maximale sur les données de test est obtenue avec $sigma = 1.611 dot.op 10^(-3)$.
+
+=== Noyau uniforme
+
+#figure(
+  image("../output/tme1/6.png"),
+  caption: [Vraisemblance pour les bars avec le noyau uniforme en fonction de $sigma$]
+)
+
+La valeur optimale de $sigma$ semble être autour de $10^(-2)$.
 
 #figure(
   image("../output/tme1/8.png"),
-  caption: [Vraisemblance avec le noyau uniforme en fonction de $sigma$]
+  caption: [Vraisemblance pour les bars avec le noyau uniforme en fonction de $sigma$]
 )
 
-La vraisemblance est maximale avec le noyau uniforme sur les données de test est obtenue avec $sigma = 9.83 dot.op 10^(-5)$.
+La vraisemblance maximale sur les données de test est obtenue avec $sigma = 1.632 dot.op 10^(-2)$.
 
 
 == Régression par Nadaraya-Watson
