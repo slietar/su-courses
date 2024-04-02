@@ -1,6 +1,7 @@
 from pathlib import Path
 from typing import Callable
 
+from matplotlib.colors import LogNorm
 import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib.axes import Axes
@@ -12,7 +13,7 @@ def mse(w: np.ndarray, x: np.ndarray, y: np.ndarray):
   return ((np.einsum('...ji, ...i -> ...j', x, w) - y) ** 2).mean(axis=-1)
 
 def mse_grad(w: np.ndarray, x: np.ndarray, y: np.ndarray):
-  return 2 * x.T @ (x @ w - y) / x.shape[0]
+  return 2.0 * x.T @ (x @ w - y) / x.shape[0]
 
 def reglog(w: np.ndarray, x: np.ndarray, y: np.ndarray):
   return np.log(1.0 + np.exp(-y * np.einsum('...ji, ...i -> ...j', x, w))).mean(axis=-1)
@@ -105,12 +106,12 @@ def plot1():
   lrs = np.array([4e-1, 3e-1, 1e-1, 1e-2])
 
   for lr in lrs:
-    _, _, losses = descente_gradient(x, y, mse, mse_grad, eps=lr, iter=200)
+    _, _, losses = descente_gradient(x, y, mse, mse_grad, eps=lr, iter=125)
     ax.plot(np.arange(len(losses)), losses, label=f'ε = {lr}')
 
   ax.set_xlabel('Itération')
   ax.set_ylabel('Coût')
-  ax.set_xscale('log')
+  # ax.set_xscale('log')
   ax.set_yscale('log')
   ax.legend()
 
@@ -183,6 +184,7 @@ def plot2():
 
   ax.set_xlabel('Itération')
   ax.set_ylabel('Coût')
+  ax.set_yscale('log')
   ax.legend()
 
   with (output_path / '4.png').open('wb') as file:
@@ -231,13 +233,12 @@ def plot2():
 
   for ax, lr, ws in zip(axs.flat, lrs, wss):
     ax: Axes
-    ax.contourf(x_grid, y_grid, np.log(reglog(grid, x, y).reshape(x_grid.shape)), alpha=0.5, cmap='RdYlBu_r', levels=20)
+    im = ax.contourf(x_grid, y_grid, reglog(grid, x, y).reshape(x_grid.shape), alpha=0.5, cmap='RdYlBu_r', levels=5, norm=LogNorm())
     ax.plot(ws[:, 0], ws[:, 1])
-    # ax.plot(center[0], center[1], 'o', color='C3', label='Minimum global')
 
-    # f = interp1d(np.arange(), ws[:, 1], kind='cubic')
-    # ax.arrow(ws[50, 0], ws[50, 1], 0.01, 0.02, shape='full', lw=0, length_includes_head=True, head_width=.05)
-    # ax.arrow(ws[50, 0], ws[50, 1], 0.01, 0.02, shape='full', lw=0, length_includes_head=True, head_width=.05)
+    fig.colorbar(im, ax=ax)
+
+    # ax.plot(center[0], center[1], 'o', color='C3', label='Minimum global')
 
     ax.set_xlabel('w₁')
     ax.set_ylabel('w₂')
@@ -287,5 +288,5 @@ def plot3():
 
 plot1()
 plot2()
-plot3()
+# plot3()
 # plt.show()

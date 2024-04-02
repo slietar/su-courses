@@ -189,7 +189,7 @@ output_path.mkdir(exist_ok=True, parents=True)
 data_path = Path(__file__).parent / 'data'
 
 
-def plot0():
+def plot0a():
   x, y = mltools.gen_arti(data_type=0)
   lim = mltools.get_lim_for_data_type(data_type=0)
 
@@ -209,6 +209,26 @@ def plot0():
   ax.legend()
 
   with (output_path / '19.png').open('wb') as file:
+    fig.savefig(file)
+
+
+def plot0b():
+  data = get_usps()
+
+  fig, axs = plt.subplots(ncols=2)
+  fig.set_figheight(2.5)
+  fig.subplots_adjust(bottom=0.05, left=0.05, right=0.95)
+
+  ax: Axes
+
+  for ax_index, ax in enumerate(axs):
+    im = ax.imshow(data.train_x[ax_index, :].reshape(16, 16), cmap='gray')
+    ax.set_title(f'Classe: {data.train_y[ax_index]}')
+    ax.axis('off')
+
+  fig.colorbar(im, ax=axs)
+
+  with (output_path / '20.png').open('wb') as file:
     fig.savefig(file)
 
 
@@ -824,12 +844,13 @@ def plot8():
 
 
 # plot0()
+plot0b()
 # plot1a()
-plot1b()
+# plot1b()
 # plot2()
 # plot3()
 # plot5a()
 # plot5b()
 # plot6b()
 # plot6d()
-plt.show()
+# plt.show()

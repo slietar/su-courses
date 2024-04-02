@@ -237,6 +237,7 @@ def plot3():
 
   lines = l1 + l2
   ax1.legend(lines, [l.get_label() for l in lines])
+  ax1.grid()
 
   with (output_path / '2.png').open('wb') as file:
     plt.savefig(file)

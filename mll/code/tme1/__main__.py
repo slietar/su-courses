@@ -7,10 +7,7 @@ from typing import Any, Callable, Optional
 import matplotlib.image as mpimg
 import matplotlib.pyplot as plt
 import numpy as np
-from matplotlib import colormaps
 from matplotlib.axes import Axes
-from matplotlib.colors import LogNorm
-from matplotlib.rcsetup import cycler
 from scipy.interpolate import interp1d
 from scipy.optimize import minimize_scalar
 from tqdm import tqdm

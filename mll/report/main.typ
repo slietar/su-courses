@@ -28,7 +28,7 @@
 
 == Introduction
 
-On implémente la méthode ```py Density.score()``` :
+On implémente la méthode ```py Density.score``` :
 
 ```py
 from abc import ABC, abstractmethod
@@ -198,13 +198,56 @@ Les ensembles de test et d'entraînement n'ayant pas la même note moyenne, ils 
 
 = TME 2 – Descente de gradient
 
+== Implémentation des fonctions de coût
+
+On implémente les fonctions demandées :
+
+```python
+def mse(w: np.ndarray, x: np.ndarray, y: np.ndarray):
+  return ((np.einsum('...ji, ...i -> ...j', x, w) - y) ** 2).mean(axis=-1)
+
+def mse_grad(w: np.ndarray, x: np.ndarray, y: np.ndarray):
+  return 2.0 * x.T @ (x @ w - y) / x.shape[0]
+
+def reglog(w: np.ndarray, x: np.ndarray, y: np.ndarray):
+  return np.log(1.0 + np.exp(-y * np.einsum('...ji, ...i -> ...j', x, w))).mean(axis=-1)
+
+def reglog_grad(w: np.ndarray, x: np.ndarray, y: np.ndarray):
+  return -(y[:, None] * x / (1.0 + 1.0 / np.exp(-y * (x @ w)))[:, None]).mean(axis=0)
+```
+
+== Descente de gradient
+
+On implémente la descente de gradient :
+
+```python
+from typing import Callable
+
+def descente_gradient(datax: np.ndarray, datay: np.ndarray, f_loss: Callable, f_grad: Callable, eps: float, iter: int):
+  w = np.random.randn(datax.shape[1])
+  losses = np.empty(iter)
+  ws = np.empty((iter, w.shape[0]))
+
+  losses[0] = f_loss(w, datax, datay)
+  ws[0, :] = w
+
+  for index in range(1, iter):
+    w = w - eps * f_grad(w, datax, datay)
+    losses[index] = f_loss(w, datax, datay)
+    ws[index, :] = w
+
+  return w, ws, losses
+```
+
 == Expérimentations
 
 === Régression linéaire
 
+On teste la régression linéaire sur le problème de classification à deux gaussiennes.
+
 #figure(
   image("../output/tme2/2.png"),
-  caption: [Classification par une régression linéaire]
+  caption: [Classification du problème à deux gaussiennes par une régression linéaire]
 )
 
 #figure(
@@ -217,13 +260,23 @@ Les ensembles de test et d'entraînement n'ayant pas la même note moyenne, ils 
   caption: [Profil de la fonction coût et trajectoire de la descente de gradient]
 )
 
+Comme attendu, une valeur de $sigma$ trop élevée cause un surapprentissage visible par une oscillation dans les paramètres. Un $sigma$ trop faible empêche d'atteindre le minimum de la fonction coût.
+
+#figure(
+  image("../output/tme2/7.png"),
+  caption: [Classification par une régression linéaire sur des données non linéairement séparables]
+)
+
+Sur le problème à quatre gaussiennes et le problème de l'échiquier, les données ne sont pas linéairement séparables et la régression linéaire ne peut pas les classifier correctement.
 
 === Régression logistique
 
 #figure(
   image("../output/tme2/5.png"),
-  caption: [Classification par une régression logistique]
+  caption: [Classification du problème à deux gaussiennes par une régression logistique]
 )
+
+Comme la régression linéaire, la régression logistique donne une frontière de décision linéaire, mais ne donne pas les mêmes valeurs ni le même coût.
 
 #figure(
   image("../output/tme2/4.png"),
@@ -235,16 +288,30 @@ Les ensembles de test et d'entraînement n'ayant pas la même note moyenne, ils 
   caption: [Profil de la fonction coût et trajectoire de la descente de gradient]
 )
 
-#figure(
-  image("../output/tme2/7.png"),
-  caption: [Classification par une régression logistique sur des données non linéairement séparables]
-)
+On réduit rapidement le coût mais il est plus compliqué d'atteindre son minimum.
 
 
 
 = TME 5 – Perceptron et SVMs
 
 == Perceptron et classe `Linéaire`
+
+#figure(
+  image("../output/tme5/19.png"),
+  caption: [Classification des données de type 0 avec un perceptron]
+)
+
+Le perceptron arrive sans problème à résoudre le problème à deux gaussiennes.
+
+
+== Données USPS
+
+On visualise les deux premiers chiffres de l'ensemble d'entraînement.
+
+#figure(
+  image("../output/tme5/20.png"),
+  caption: [Exemples de chiffres dans l'ensemble de données USPS]
+)
 
 #figure(
   image("../output/tme5/1.png"),
@@ -265,7 +332,7 @@ Le modèle de 6 contre tous a moins de poids positifs car il y a moins de pixels
   caption: [Scores pendant l'apprentissage]
 )
 
-On a fait attention à avoir le même nombre d'exemples dans les deux classes pour les données d'entraînement et de test, par conséquent un score de 0.5 est attendu pour un modèle aléatoire. C'est effectivement le cas à l'époque zéro.
+On a fait attention à avoir le même nombre d'exemples dans les deux classes pour les données d'entraînement et de test, par conséquent un score de 0.5 est attendu pour un modèle aléatoire. C'est effectivement le cas (ou quasiment le cas) à l'époque zéro.
 
 Le second problème est plus difficle, ce qui peut expliquer la convergence plus lente. On n'observe pas de surapprentissage.
 
@@ -277,7 +344,7 @@ Le second problème est plus difficle, ce qui peut expliquer la convergence plus
   caption: [Score de test avec différentes tailles de batch $m$]
 )
 
-On n'observe pas de différence significative de la vitesse de convergence en fonction de la taille de batch. Il en de même en ajoutant un bruit gaussien aux données d'entraînement.
+On n'observe pas de différence significative de la vitesse de convergence en fonction de la taille de batch. Il en est de même en ajoutant un bruit gaussien aux données d'entraînement.
 
 
 == Projections et pénalisation
@@ -304,10 +371,10 @@ def proj_poly(x: np.ndarray, /):
 
 #figure(
   image("../output/tme5/5.png"),
-  caption: [Séparation des données avec une projection avec biais et avec une projection polynomiale de degré 2]
+  caption: [Séparation des données de type 1 avec une projection avec biais et avec une projection polynomiale de degré 2]
 )
 
-L'ajout d'un biais uniquement ne permet pas de séparer les données car celles-ci ne sont pas linéairement séparables, or le modèle reste linéaire. En revanche, la projection polynomiale, et en particulier la composante $x_1 x_2$, permet de séparer les données. La frontière de décision du modèle pour les données de type 1 est de la forme $0.1 + 10x_1 x_2 = 0$.
+L'ajout d'un biais uniquement ne permet pas de séparer les données car celles-ci ne sont pas linéairement séparables, or le modèle reste linéaire. En revanche, la projection polynomiale, et en particulier la composante $x_1 x_2$, permet de séparer les données. La frontière de décision du modèle est de la forme $0.1 + 10x_1 x_2 = 0$.
 
 === Projection gaussienne
 
@@ -318,40 +385,40 @@ def proj_gauss(x: np.ndarray, /, base: np.ndarray, sigma: float):
   return np.exp(-0.5 * (np.linalg.norm(x[..., None, :] - base, axis=-1) / sigma) ** 2)
 ```
 
-Pour les données de type 0, deux points de base bien placés suffisent pour séparer les données. Un seul point de base pourrait même suffire s'il on ajoute un biais.
-
 #figure(
   image("../output/tme5/6.png"),
   caption: [Séparation des données de type 0 avec $sigma = 1.0$]
 )
 
-Si la distance des points de base avec les données ne permet pas de classer : [...]
+Pour les données de type 0, deux points de base bien placés suffisent pour séparer les données. Un seul point de base pourrait même suffire si l'on ajoute un biais.
 
 #figure(
   image("../output/tme5/7.png"),
   caption: [Séparation des données de type 0 avec $sigma = 1.0$]
 )
 
-Pour les données de type 1 et 2, on peut créer une grille de points de base.
+Si les points de base sont placés sur une droite parallèle à la frontière de séparation idéale, comme c'est presque le cas ici, il est plus difficile voire impossible pour le modèle de réussir la classification.
 
 #figure(
   image("../output/tme5/9.png"),
   caption: [Séparation des données de type 1 avec $sigma = 1.5$]
 )
 
-Avec un $sigma$ trop élevé, les gaussiennes se chevauchent et il est impossible de séparer les données. Avec un $sigma$ trop faible, les gaussiennes deviennent négligeables dès que l'on s'éloigne des points de base.
+Pour les données de type 1 et 2, on peut crée une grille de points de base pour capturer la complexité des données avec le modèle.
 
 #figure(
   image("../output/tme5/10.png"),
   caption: [Séparation des données de type 1 avec $sigma = 0.5$]
 )
 
-Le problème de l'échiquier peut être correctement résolu avec une grille de points de base si ceux si sont au moins aussi nombreux que les cases de l'échiquier. Les données sont plus finement intercalées, on utilise donc un sigma plus faible.
+Avec un $sigma$ trop élevé, les gaussiennes se chevauchent et il est impossible de séparer les données. Avec un $sigma$ trop faible, les gaussiennes deviennent négligeables dès que l'on s'éloigne des points de base et la classification y échoue.
 
 #figure(
   image("../output/tme5/11.png"),
   caption: [Séparation des données de type 2 avec $sigma = 0.5$]
 )
+
+Le problème de l'échiquier peut être correctement résolu avec une grille de points de base si ceux-ci sont au moins aussi nombreux que les cases de l'échiquier. Les données sont plus finement intercalées, on utilise donc un $sigma$ plus faible.
 
 
 == SVM et grid search
@@ -384,7 +451,7 @@ Les noyaux gaussien et polynomial de degré 2 donnent une classification équiva
   caption: [Classification des données de type 1 avec un noyau gaussien pour différentes valeurs de~$gamma$]
 )
 
-On teste ensuite le noyau gaussien avec différentes valeurs de $gamma$. Une valeur de $gamma$ trop faible donne un modèle qui ne prend pas en compte les détails des données. Au contraire, $gamma$ trop élevé donne un modèle qui surapprend et où tous les points sont des vecteurs support.
+On teste ensuite le noyau gaussien avec différentes valeurs de $gamma$. Une valeur de $gamma$ trop faible donne un modèle qui ne prend pas en compte les détails des données. Au contraire, un $gamma$ trop élevé donne un modèle qui surapprend et où tous les points sont des vecteurs support.
 
 === Reconaissance de chiffres
 
@@ -426,7 +493,7 @@ On teste un large nombre de noyaux et de paramètres différents sur le problèm
   caption: [Reconaissance de chiffres avec différents nombres de points d'entrainement, sur le noyau optimal]
 )
 
-En testant différents nombre de points d'entraînement, on observe que le score augmente rapidement en performance jusqu'au seuil de 500 points, au delà duquel la performance augmente beaucoup plus lentement.
+En testant différents nombres de points d'entraînement, on observe que le score augmente rapidement en performance jusqu'au seuil de 500 points, au delà duquel la performance augmente beaucoup plus lentement.
 
 
 == String kernel
@@ -457,7 +524,7 @@ Le modèle est assez bon et trouve la bonne classe dans 91 % des cas.
 
 == Forêts aléatoires
 
-Les données de type 0 sont linéairement séparables et un arbre de décision de profondeur 1 suffit pour les séparer. On expérimente sur les données aléatoires de type 1 et 2.
+Les données de type 0 sont linéairement séparables et un arbre de décision de profondeur 1 suffit pour les séparer. On expérimente sur les données artificielles de type 1 et 2.
 
 #figure(
   image("../output/tme6/3.png"),
@@ -471,7 +538,7 @@ Sur les donnés de type 1, une profondeur minimale de 3 à 4 niveaux est nécess
   caption: [Frontière de décision de quatre arbres de décision de profondeur 10]
 )
 
-Individuellement, les arbres de décisions ont tendance à faire du surapprentissage et à parfois faire des prédictions eronnées. Combinés ensemble, ces erreurs s'annulent et la prédiction est plus fiable.
+Individuellement, les arbres de décisions ont tendance à faire du surapprentissage et à parfois faire des prédictions erronnées. Combinés ensemble, ces erreurs s'annulent et la prédiction est plus fiable.
 
 #figure(
   image("../output/tme6/6.png"),
@@ -500,4 +567,4 @@ Les données de type 0 sont linéairement séparables et le boosting ne n'a pas 
   caption: [Valeurs de $epsilon_t$ et $Z$ associées à la classification sur les données de type 1]
 )
 
-En ajoutant davantage plus que 3 classifieurs sur le même problème, on observe que l'erreur $Z$ continue de diminuer parce que la prédiction devient de plus en plus fiable bien que quasiment tous les points soient déjà bien classés. En revanche, la valeur de $epsilon_t$ ne diminue pas car les classifieurs individuels suivant ne sont pas meilleurs que les premiers étant donnée la distribution des poids.
+En ajoutant davantage de classifieurs sur le même problème, on observe que l'erreur $Z$ continue de diminuer parce que la prédiction devient de plus en plus fiable bien que quasiment tous les points soient déjà bien classés. En revanche, la valeur de $epsilon_t$ ne diminue pas car les classifieurs individuels suivant ne sont pas meilleurs que les premiers étant donnée la distribution des poids.
