@@ -12,8 +12,9 @@ async fn run_one() -> Result<(), Box<dyn Error>> {
     let mut engine = Engine::new().await?;
 
     for filename in &[
-        "2h1l.pdb",
-        "5j7o.pdb"
+        // "2h1l.pdb",
+        // "5j7o.pdb",
+        "../drive/FBN1_AlphaFold.pdb"
     ] {
         let path = Path::new(filename);
 
@@ -108,14 +109,10 @@ async fn run() -> Result<(), Box<dyn Error>> {
 
         let mut cv_domain = Vec::with_capacity(cutoffs.len());
 
-        let residue_start = domain.start_position - (if domain_index > 0 { data.domains[domain_index - 1].start_position } else { 0 });
+        let residue_start = domain.start_position - (if domain_index > 0 { data.domains[domain_index - 1].start_position } else { 1 });
         let residue_end = residue_start + (domain.end_position - domain.start_position + 1);
-        // let residue_end = data.domains.get(domain_index + 1)
-        //     .and_then(|domain| Some(domain.end_position))
-        //     .unwrap_or(data.sequence.len());
 
         let residue_range = residue_start..residue_end;
-        // let residue_range = ..;
 
         // eprintln!("{:?}", &residue_range);
         // eprintln!("{:?}", &domain);
