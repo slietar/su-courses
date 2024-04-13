@@ -1,28 +1,26 @@
-import math
-from matplotlib import pyplot as plt
 import numpy as np
+from matplotlib import pyplot as plt
 
-from .plddt import highlight_domains
 from .. import data, shared
 from ..cv import cv
+from .utils import highlight_domains
 
 
-df = cv.unstack()
-df = df.reindex(columns=(('cv', position) for position in range(1, data.protein_length + 1)), fill_value=math.nan)
+df = cv.reindex(index=range(1, data.protein_length + 1), fill_value=np.nan).loc[:, [10.0, 20.0, 30.0, 40.0, 50.0]]
 
 
 fig, ax = plt.subplots(figsize=(25, 8))
 
-im = ax.imshow(df.values, aspect='auto', cmap='plasma', extent=((0, data.protein_length, 0, df.shape[0])), interpolation='none', vmin=0.0, vmax=1.0)
-highlight_domains(ax, df.shape[0])
+im = ax.imshow(df.values.T, aspect='auto', cmap='plasma', extent=((0, data.protein_length, 0, len(df.columns))), interpolation='none', vmin=0.0, vmax=1.0)
+highlight_domains(ax, len(df.columns))
 
 ax.set_yticks(
-  labels=reversed(df.index.values),
-  ticks=(np.arange(df.shape[0]) + 0.5)
+  labels=reversed(df.columns),
+  ticks=(np.arange(len(df.columns)) + 0.5)
 )
 
 ax.set_ylabel('Cutoff (Å)')
-ax.set_ylim(0, df.shape[0] + 1)
+ax.set_ylim(0, len(df.columns) + 1)
 
 ax.tick_params('y', left=False)
 

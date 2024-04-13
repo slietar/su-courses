@@ -4,7 +4,7 @@ import numpy as np
 import pandas as pd
 from pymol import cmd
 
-from . import data, shared
+from . import data, plots, shared
 from .msa import msa
 from .pymol import PymolTransformation
 
@@ -85,14 +85,15 @@ for relative_domain_index, (domain_index, domain_name, domain) in enumerate((dom
 
 diff = np.sqrt((all_residue_coords - np.nanmean(all_residue_coords, axis=0)).sum(axis=2))
 rmsf = np.sqrt(np.nanmean(diff ** 2, axis=0))
-
-print(rmsf)
+rmsf = rmsf[rmsf != 0]
 
 fig, ax = plt.subplots()
 
 ax.plot(rmsf)
 ax.set_xlabel('Position')
 ax.set_ylabel('RMSF (Å)')
+
+ax.set_ylim(0.0, 2.25)
 
 
 output_path = shared.output_path / 'rmsf'

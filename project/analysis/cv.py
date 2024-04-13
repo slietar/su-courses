@@ -29,7 +29,7 @@ cv = pd.DataFrame.from_dict(dict(
   position=entries_position
 ))
 
-cv.set_index(['cutoff', 'position'], inplace=True)
+cv = cv.pivot(index='position', columns='cutoff', values='cv')
 
 
 if __name__ == '__main__':

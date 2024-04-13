@@ -2,7 +2,7 @@ import numpy as np
 from matplotlib import pyplot as plt
 from pymol import cmd
 
-from . import data, shared
+from . import data, plots, shared
 from .pymol import PymolAlignment
 
 

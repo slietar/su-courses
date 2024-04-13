@@ -1,14 +1,13 @@
-from dataclasses import dataclass
 import itertools
 import sys
+from dataclasses import dataclass
 
 import numpy as np
 from matplotlib import pyplot as plt
 from pymol import cmd
 
+from . import data, plots, shared
 from .pymol import PymolAlignment
-
-from . import data, shared
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -103,6 +102,3 @@ for domain_kind_index, domain_kind in enumerate(data.domain_kinds):
 
   with (output_path / f'{domain_kind}.png').open('wb') as file:
     fig.savefig(file, dpi=300)
-
-
-plt.show()

@@ -28,6 +28,11 @@ all_mutations = pd.concat([
 gemme_threshold = -0.779
 protein_length = len(sequence)
 
+interest_regions = {
+  'Neonat': (951, 1362),
+  'TB5': (1689, 1762)
+}
+
 
 if __name__ == '__main__':
   for df, label in [
