@@ -11,7 +11,7 @@ df = cv.reindex(index=range(1, data.protein_length + 1), fill_value=np.nan).loc[
 
 fig, ax = plt.subplots(figsize=(25, 8))
 
-im = ax.imshow(df.values.T, aspect='auto', cmap='plasma', extent=((0, data.protein_length, 0, len(df.columns))), interpolation='none', vmin=0.0, vmax=1.0)
+im = ax.imshow(df.values.T, aspect='auto', cmap='plasma', extent=((0.5, data.protein_length + 0.5, 0, len(df.columns))), interpolation='none', vmin=0.0, vmax=1.0)
 highlight_domains(ax, len(df.columns))
 
 ax.set_yticks(

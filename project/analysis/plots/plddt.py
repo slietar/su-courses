@@ -2,7 +2,7 @@ import numpy as np
 import pandas as pd
 from matplotlib import pyplot as plt
 
-from .. import shared
+from .. import plots, shared
 from ..plddt import plddt
 from .utils import highlight_domains
 

@@ -39,20 +39,11 @@ def read_pdbtext_with_checking(pdbstring: str):
     return coords
 
 
-sec_struct_labels = [
-  'loop',
-  'alpha-helix',
-  'beta-strand'
-]
-
 ss_contextualized = list[int]()
 ss_pruned = list[int]()
 ss_positions = list[int]()
 
 for domain_index, (_, domain) in enumerate(data.domains.iterrows()):
-  # domain_index = 4
-  # domain = data.domains.iloc[domain_index]
-
   target_domain = target_domains.loc[domain.name]
 
   with (shared.output_path / f'structures/alphafold-contextualized/{domain_index:04}.pdb').open() as file:
@@ -77,7 +68,14 @@ dssp = pd.DataFrame.from_dict(dict(
   position=ss_positions
 )).set_index('position')
 
+dssp_labels = [
+  'loop',
+  'alpha-helix',
+  'beta-strand'
+]
+
 
 __all__ = [
-  'dssp'
+  'dssp',
+  'dssp_labels'
 ]
