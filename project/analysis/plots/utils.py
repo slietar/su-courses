@@ -1,7 +1,9 @@
 from matplotlib import patches
 from matplotlib.axes import Axes
+import pandas as pd
 
 from .. import data
+from ..hospital import hospital_domains
 
 
 def highlight_domains(ax: Axes, y: float):
@@ -36,7 +38,7 @@ def highlight_domains(ax: Axes, y: float):
 
   for start_position, end_position in data.interest_regions.values():
     rect = patches.Rectangle(
-      [start_position - 0.5, y + 0.5],
+      [start_position - 0.5, y + 0.25],
       end_position - start_position + 1,
       0.25,
       color='blueviolet',
@@ -45,3 +47,7 @@ def highlight_domains(ax: Axes, y: float):
     )
 
     ax.add_artist(rect)
+
+  for _, hospital_domain in hospital_domains.iterrows():
+    if not pd.isna(hospital_domain.number):
+      ax.text((hospital_domain.start_position + hospital_domain.end_position) * 0.5, y + 0.75, str(hospital_domain.number), ha='center', va='center', fontsize=8, color='white')
