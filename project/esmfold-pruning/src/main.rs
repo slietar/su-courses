@@ -103,16 +103,13 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                     ).or_else(|_| Err("Failed to load PDB"))?;
 
                     if let Some(pruned_info) = &mut pruned_info {
-                        // let pruned_output_path = output_dir_path.join(pruned_name).join(&format!("{}.pdb", domain_number));
-                        // pdbtbx::save(&input_pdb, &pruned_output_path.to_string_lossy(), pdbtbx::StrictnessLevel::Loose).or_else(|_| Err("Failed to save PDB"))?;
-
                         let input_model = input_pdb.model(0).ok_or("Failed to get model")?;
                         let chain = input_model.chain(0).ok_or("Failed to get chain")?;
 
                         let offset = domain.start_position - (if domain_index > 0 {
                             data.domains[domain_index - 1].start_position
                         } else {
-                            0
+                            1
                         });
 
                         let residues = chain.residues().skip(offset).take(domain.end_position - domain.start_position + 1).cloned().collect::<Vec<_>>();
@@ -128,25 +125,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                         pdbtbx::save(&output_pdb, &pruned_info.output_dir_path.join(output_name).to_string_lossy(), pdbtbx::StrictnessLevel::Loose).or_else(|_| Err("Failed to save PDB"))?;
                     }
 
-                    // let residues = match spec.kind {
-                    //     SpecKind::Contextualized => {
-                    //         chain.residues().skip(offset).take(domain.end_position - domain.start_position + 1).cloned().collect::<Vec<_>>()
-                    //     },
-                    //     SpecKind::Isolated => {
-                    //         chain.residues().cloned().collect::<Vec<_>>()
-                    //     },
-                    //     _ => unreachable!(),
-                    // };
-
-                    // let residues = chain.residues().skip(offset).take(domain.end_position - domain.start_position + 1).cloned().collect::<Vec<_>>();
-
                     domains_plddt.push(get_plddt(input_pdb.residues())?);
-
-                    // let new_chain = Chain::from_iter("A", residues.into_iter()).ok_or("Failed to create chain")?;
-
-                    // let mut output_pdb = pdbtbx::PDB::new();
-                    // let output_model = pdbtbx::Model::from_iter(0, [new_chain].into_iter());
-                    // output_pdb.add_model(output_model);
 
                     pdbtbx::save(&input_pdb, &output_path.to_string_lossy(), pdbtbx::StrictnessLevel::Loose).or_else(|_| Err("Failed to save PDB"))?;
                 }
