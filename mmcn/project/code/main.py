@@ -1,7 +1,7 @@
 from matplotlib import pyplot as plt
 import numpy as np
 
-from . import config as _
+from . import config as config
 
 
 

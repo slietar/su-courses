@@ -1,3 +1,4 @@
+from pathlib import Path
 from matplotlib import pyplot as plt
 from matplotlib.rcsetup import cycler
 
@@ -23,3 +24,7 @@ plt.rcParams['legend.framealpha'] = 1.0
 plt.rcParams['legend.loc'] = 'upper right'
 plt.rcParams['legend.fancybox'] = False
 plt.rcParams['legend.edgecolor'] = 'k'
+
+
+output_path = Path('output')
+output_path.mkdir(exist_ok=True)

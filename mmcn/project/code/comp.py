@@ -1,9 +1,12 @@
-from sympy import Eq, Matrix, S
+from sympy import Eq, Matrix, S, Symbol
+from sympy.abc import x, y
+from sympy.calculus.util import continuous_domain
+import numpy as np
 import sympy
-from sympy.abc import x, y, z
 
 
 c = 1
+z = Symbol('z', real=True)
 
 system = Matrix([
   (y - x**3 + 3 * x**2 + z) / c,
@@ -11,6 +14,7 @@ system = Matrix([
 ])
 
 jacobian: Matrix = system.jacobian(Matrix([x, y]))
+
 # delta = jacobian.trace() ** 2 - 4 * jacobian.det()
 # sol = sympy.solveset(delta < 0, x, S.Reals)
 
@@ -33,7 +37,25 @@ a = sympy.solve(Eq(system[1], 0), y)
 b = system[0].subs(y, a[0])
 stat_points = sympy.solve(Eq(b, 0), x)
 
-# lambdas = [
-#   [eigenval1.subs(x, c) for c in stat_points],
-#   [eigenval2.subs(x, c) for c in stat_points]
-# ]
+get_stat_points = lambda zs: np.asarray(sympy.lambdify(z, stat_points, 'numpy')(np.asarray(zs, dtype=complex)))
+get_trace = lambda xs: np.asarray(sympy.lambdify(x, jacobian.trace(), 'numpy')(xs))
+
+
+# Solution boundary test
+#
+# for stat_point in stat_points:
+#   print(stat_point)
+#   print(continuous_domain(stat_point, z, S.Reals))
+
+# Stable boundary test
+#
+# p = sympy.solve(Eq(jacobian.trace(), 0), x)
+# print(p)
+# print([a.evalf() for a in p])
+
+# Stable boundary test
+#
+# for stat_point in stat_points:
+#   print(jacobian.trace().subs(x, stat_point))
+#   p = sympy.solve(Eq(jacobian.trace().subs(x, stat_point), 0), z)
+#   print(p)

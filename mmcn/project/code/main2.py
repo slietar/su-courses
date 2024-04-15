@@ -3,7 +3,7 @@ from matplotlib import pyplot as plt
 import numpy as np
 import sympy
 
-from . import comp, config as _
+from . import comp, config as config, utils
 
 
 # zs = np.linspace(-1.1, -0.5, 10000, dtype=complex)
@@ -44,25 +44,9 @@ sp = np.array([
 # print(np.isreal(sp[0, :]).sum())
 # print(np.isclose(sp[0, :].imag, 0).sum())
 
-isreal = lambda x: np.isclose(x.imag, 0)
-
-def group(x: np.ndarray, /):
-  current_item = x[0, ...]
-  current_count = 1
-
-  for index in range(1, x.shape[0]):
-    if x[index, ...] != current_item:
-      yield current_item, current_count
-      current_item = x[index, ...]
-      current_count = 1
-    else:
-      current_count += 1
-
-  yield current_item, current_count
-
 
 # mask = isreal(sp[0, :])
-sp = sp[:, isreal(sp[0, :])].real
+sp = sp[:, utils.isclosereal(sp[0, :])].real
 
 # sort = np.argsort(sp[0, :])
 sp = sp[:, np.argsort(sp[0, :])]
