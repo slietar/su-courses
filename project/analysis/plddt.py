@@ -32,8 +32,7 @@ for name, kind in [
       continue
 
   name_repl = name.replace('-', '_')
-  plddt[name_repl] = pd.Series(plddt_values, index=pd.Series(plddt_positions, name='position'), name=name_repl)
-
+  plddt[name_repl] = pd.Series(plddt_values, index=pd.Index(plddt_positions, name='position'), name=name_repl)
 
 
 __all__ = [

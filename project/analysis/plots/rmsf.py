@@ -5,16 +5,15 @@ from mpl_toolkits.axes_grid1 import make_axes_locatable
 
 
 from .. import data, plots, shared
-from ..rmsf import rmsf
+from ..rmsf import rmsf_arr_by_domain_kind
 
 
 output_path = shared.output_path / 'rmsf'
 output_path.mkdir(exist_ok=True)
 
 for domain_kind in data.domain_kinds:
-  domains, rmsf_arr = rmsf[domain_kind]
-  # rmsf_arr = rmsf_arr[:, :5]
-  # rmsf_arr[0, :] = 100
+  domains = data.domains[data.domains.kind == domain_kind]
+  rmsf_arr = rmsf_arr_by_domain_kind[domain_kind]
 
   fig, ax = plt.subplots()
   fig.set_figheight(8.0)

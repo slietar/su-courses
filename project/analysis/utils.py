@@ -14,11 +14,12 @@ T = TypeVar('T')
 
 def cache(fn: Callable[P, T], /):
   def new_fn(*args: P.args, **kwargs: P.kwargs):
-    if fn.__module__ == '__main__':
-      return fn(*args, **kwargs)
-
     name = f'{fn.__module__}:{fn.__qualname__}'
     path = cache_path / name
+
+    if fn.__module__ == '__main__':
+      path.unlink(missing_ok=True)
+      return fn(*args, **kwargs)
 
     if path.exists():
       with path.open('rb') as file:

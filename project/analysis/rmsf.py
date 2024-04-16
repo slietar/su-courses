@@ -39,7 +39,7 @@ def get_aligned_residue_coords(domain_kind: str, *, mode: Literal['ca', 'mean'] 
   domains = data.domains[data.domains.kind == domain_kind]
 
   for relative_domain_index, domain in enumerate(domains.itertuples()):
-    sequence_alignment = msa[domain_kind].loc[domain.global_index]
+    sequence_alignment = msa[domain_kind].loc[domain.Index]
 
     name = ('R' if relative_domain_index < 1 else 'M')
     path = shared.root_path / f'output/structures/alphafold-pruned/{domain.global_index:04}.pdb'
@@ -85,36 +85,28 @@ def get_aligned_residue_coords(domain_kind: str, *, mode: Literal['ca', 'mean'] 
   all_residue_coords_mean = np.nanmean(all_residue_coords, axis=0)
   all_residue_rmsf = np.sqrt(((all_residue_coords - all_residue_coords_mean) ** 2).sum(axis=2))
 
-  return domains, all_residue_rmsf
 
-  positions = list[int]()
-  rmsf = list[float]()
+  residue_positions = [position for domain in domains.itertuples() for position in range(domain.start_position, domain.end_position + 1)]
+  residue_rmsf = all_residue_rmsf.ravel()
+  residue_rmsf = residue_rmsf[~np.isnan(residue_rmsf)]
 
-  for relative_domain_index, (_, _, domain) in enumerate(domains_):
-    offset = 0
+  rmsf_by_position = pd.Series(residue_rmsf, index=pd.Index(residue_positions, name='position'), name='rmsf')
 
-    for aln_residue_index in range(all_residue_coords.shape[1]):
-      domain_residue_index = sequence_alignment[aln_residue_index + 1]
-
-      if domain_residue_index > 0:
-        diff = np.sqrt((all_residue_coords_mean[aln_residue_index, :] - all_residue_coords[relative_domain_index, aln_residue_index, :]).mean())
-        positions.append(domain.start_position + offset)
-        rmsf.append(diff)
-
-        offset += 1
-
-  print(pd.Series(rmsf, index=positions))
-
-  return all_residue_coords
+  return all_residue_rmsf, rmsf_by_position
 
 
 @utils.cache
 def compute_rmsf():
-  return { domain_kind: get_aligned_residue_coords(domain_kind) for domain_kind in data.domain_kinds }
+  result = { domain_kind: get_aligned_residue_coords(domain_kind) for domain_kind in data.domain_kinds }
+  rmsf_arr_by_domain_kind = { domain_kind: rmsf_arr for domain_kind, (rmsf_arr, _) in result.items() }
+  rmsf_by_position = pd.concat((rmsf_by_position for _, rmsf_by_position in result.values()), axis=0)
 
-rmsf = compute_rmsf()
+  return rmsf_arr_by_domain_kind, rmsf_by_position
+
+rmsf_arr_by_domain_kind, rmsf_by_position = compute_rmsf()
 
 
 __all__ = [
-  'rmsf'
+  'rmsf_arr_by_domain_kind',
+  'rmsf_by_position'
 ]
