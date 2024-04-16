@@ -1,13 +1,10 @@
 from typing import IO, Literal
 
-from matplotlib.axes import Axes
 import numpy as np
 import pandas as pd
-from matplotlib import pyplot as plt
-from mpl_toolkits.axes_grid1 import make_axes_locatable
 from pymol import cmd
 
-from . import data, plots, shared
+from . import data, shared, utils
 from .msa import msa
 from .pymol import PymolTransformation
 
@@ -37,16 +34,15 @@ def parse_pdb_atoms(file: IO[str], /):
   return pd.DataFrame(lines, columns=['atom_serial_number', 'atom_name', 'alt_loc_ind', 'residue_name', 'chain_id', 'residue_seq_number', 'code', 'x', 'y', 'z', 'occupancy', 'temp_factor', 'segment_id', 'element_symbol', 'charge'])
 
 
-
 def get_aligned_residue_coords(domain_kind: str, *, mode: Literal['ca', 'mean'] = 'mean'):
   all_residue_coords = np.zeros((*msa[domain_kind].shape, 3)) * np.nan # (domains, residues, xyz)
   domains = data.domains[data.domains.kind == domain_kind]
 
   for relative_domain_index, domain in enumerate(domains.itertuples()):
-    sequence_alignment = msa[domain_kind].loc[domain.Index]
+    sequence_alignment = msa[domain_kind].loc[domain.global_index]
 
     name = ('R' if relative_domain_index < 1 else 'M')
-    path = shared.root_path / f'output/structures/alphafold-pruned/{domain.Index:04}.pdb'
+    path = shared.root_path / f'output/structures/alphafold-pruned/{domain.global_index:04}.pdb'
 
 
     # Get structure alignment
@@ -112,39 +108,13 @@ def get_aligned_residue_coords(domain_kind: str, *, mode: Literal['ca', 'mean'] 
   return all_residue_coords
 
 
-if __name__ == '__main__':
-  output_path = shared.output_path / 'rmsf'
-  output_path.mkdir(exist_ok=True)
+@utils.cache
+def compute_rmsf():
+  return { domain_kind: get_aligned_residue_coords(domain_kind) for domain_kind in data.domain_kinds }
 
-  for domain_kind in data.domain_kinds:
-    domains, rmsf_arr = get_aligned_residue_coords(domain_kind)
-    # rmsf_arr = rmsf_arr[:, :5]
-    # rmsf_arr[0, :] = 100
-
-    fig, ax = plt.subplots()
-    fig.set_figheight(8.0)
-
-    divider = make_axes_locatable(ax)
-
-    im = ax.imshow(rmsf_arr, extent=(0.5, rmsf_arr.shape[1] + 0.5, 0, rmsf_arr.shape[0]), aspect='auto', cmap='hot')
-
-    ax1: Axes = divider.append_axes('top', 1.2, pad=0.1, sharex=ax)
-    ax1.plot(range(1, rmsf_arr.shape[1] + 1), np.nanmean(rmsf_arr, axis=0))
-    ax1.xaxis.set_tick_params(bottom=False, labelbottom=False)
-    ax1.grid()
-
-    cbar = fig.colorbar(im, ax=ax)
-
-    cbar.ax.get_yaxis().labelpad = 15
-    cbar.ax.set_ylabel('RMSF (Å)', rotation=270)
-
-    ax.set_yticks(
-      labels=reversed([str(number) for number in domains['number']]),
-      ticks=(np.arange(len(domains)) + 0.5)
-    )
-
-    # ax.yaxis.set_tick_params(left=False)
+rmsf = compute_rmsf()
 
 
-    with (output_path / f'{domain_kind}.png').open('wb') as file:
-      fig.savefig(file)
+__all__ = [
+  'rmsf'
+]

@@ -9,7 +9,7 @@ from ..hospital import hospital_domains
 def highlight_domains(ax: Axes, y: float):
   ax1 = ax.twiny()
   ax1.set_xticks(
-    labels=[f'{domain.kind} {domain.number}' for domain in data.domains.itertuples()],
+    labels=data.domains.name,
     ticks=[(domain.start_position - 0.5 + domain.end_position + 0.5) * 0.5 for domain in data.domains.itertuples()],
     rotation='vertical'
   )
@@ -48,6 +48,6 @@ def highlight_domains(ax: Axes, y: float):
 
     ax.add_artist(rect)
 
-  for _, hospital_domain in hospital_domains.iterrows():
+  for hospital_domain in hospital_domains.itertuples():
     if not pd.isna(hospital_domain.number):
       ax.text((hospital_domain.start_position + hospital_domain.end_position) * 0.5, y + 0.75, str(hospital_domain.number), ha='center', va='center', fontsize=8, color='white')

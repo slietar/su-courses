@@ -2,8 +2,8 @@ import numpy as np
 from matplotlib import pyplot as plt
 from pymol import cmd
 
-from . import data, plots, shared
-from .pymol import PymolAlignment
+from .. import data, plots, shared
+from ..pymol import PymolAlignment
 
 
 labels = [
@@ -23,7 +23,7 @@ rmsds = np.empty((len(data.domains), len(alignments)))
 
 cmd.load(shared.output_path / 'structures/alphafold-global/structure.pdb', '0')
 
-for domain_index in range(len(data.domains)):
+for domain_index in data.domains.global_index:
   cmd.load(shared.output_path / f'structures/alphafold-pruned/{domain_index:04}.pdb', '1')
   cmd.load(shared.output_path / f'structures/esmfold-pruned/{domain_index:04}.pdb', '2')
   cmd.load(shared.output_path / f'structures/esmfold-isolated/{domain_index:04}.pdb', '3')
@@ -46,7 +46,7 @@ ax.set_yticks(
 )
 
 ax.set_xticks(
-  labels=[f'{domain.kind} {domain.number}' for domain in data.domains.itertuples()],
+  labels=data.domains.name,
   ticks=np.arange(len(data.domains)),
   rotation='vertical'
 )
@@ -59,7 +59,4 @@ cbar.ax.set_ylabel('RMSD (Å)', rotation=270)
 fig.subplots_adjust(left=0.3)
 
 with (shared.output_path / 'rmsd_methods.png').open('wb') as file:
-  fig.savefig(file, dpi=300)
-
-
-plt.show()
+  fig.savefig(file)

@@ -6,8 +6,8 @@ import numpy as np
 from matplotlib import pyplot as plt
 from pymol import cmd
 
-from . import data, plots, shared
-from .pymol import PymolAlignment
+from .. import data, plots, shared
+from ..pymol import PymolAlignment
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -19,9 +19,9 @@ class Structure:
 
 structures = list[Structure]()
 
-for domain_index, (_, domain) in enumerate(data.domains.iterrows()):
-  name = f'A{domain_index}'
-  cmd.load(shared.output_path / f'structures/alphafold-pruned/{domain_index:04}.pdb', name)
+for domain in data.domains.itertuples():
+  name = f'A{domain.global_index}'
+  cmd.load(shared.output_path / f'structures/alphafold-pruned/{domain.global_index:04}.pdb', name)
 
   domain_kind_index = data.domain_kinds.index(domain.kind)
 
@@ -56,7 +56,7 @@ for exp_structure_index, (_, exp_structure) in enumerate(data.structures.iterrow
 
   for _, domain in data.domains.iterrows():
     if (domain.start_position <= exp_structure.end_position) and (exp_structure.start_position <= domain.end_position):
-      print(f'  - {domain.kind} {domain.number}')
+      print(f'  - {domain.name}')
 
 
 output_path = shared.output_path / 'rmsd_domains'
@@ -101,4 +101,4 @@ for domain_kind_index, domain_kind in enumerate(data.domain_kinds):
   cbar.ax.set_ylabel('RMSD (Å)', rotation=270)
 
   with (output_path / f'{domain_kind}.png').open('wb') as file:
-    fig.savefig(file, dpi=300)
+    fig.savefig(file)

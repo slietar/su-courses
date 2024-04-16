@@ -11,14 +11,14 @@ with (shared.root_path / 'structure/output/data.pkl').open('rb') as file:
 
 
 domain_kinds = pkl_data['domain_kinds']
-domains = pd.DataFrame.from_records(pkl_data['domains'], index='global_index')
+domains = pd.DataFrame.from_records(pkl_data['domains']).set_index('name', drop=False)
 effect_labels = pkl_data['effect_labels']
-exons = pd.DataFrame.from_records(pkl_data['exons'], index='name')
-mutations = pd.DataFrame.from_records(pkl_data['mutations'], index='name')
+exons = pd.DataFrame.from_records(pkl_data['exons']).set_index('name', drop=False)
+mutations = pd.DataFrame.from_records(pkl_data['mutations']).set_index('name', drop=False)
 pathogenicity_labels = pkl_data['pathogenicity_labels']
 sequence = ''.join(pkl_data['sequence'])
-structures = pd.DataFrame.from_records(pkl_data['structures'], index='id')
-variants = pd.DataFrame.from_records(pkl_data['variants'], index='name')
+structures = pd.DataFrame.from_records(pkl_data['structures']).set_index('id', drop=False)
+variants = pd.DataFrame.from_records(pkl_data['variants']).set_index('name', drop=False)
 
 all_mutations = pd.concat([
   mutations.assign(source='hospital', pathogenicity=1),
