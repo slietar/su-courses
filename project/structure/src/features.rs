@@ -1,4 +1,4 @@
-use std::{error::Error, fs::File, io::BufReader};
+use std::{error::Error, fmt::Display, fs::File, io::BufReader};
 use serde::{Deserialize, Serialize};
 
 
@@ -31,6 +31,7 @@ struct UniProtPosition {
 pub struct Domain {
     #[serde(flatten)]
     pub kind: DomainKind,
+    pub global_index: usize,
 
     pub name: String,
     pub number: usize,
@@ -39,7 +40,7 @@ pub struct Domain {
     pub end_position: usize,
 }
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Clone, Copy, Debug, Deserialize, Serialize)]
 #[serde(tag = "kind")]
 pub enum DomainKind {
     #[serde(rename = "EGF")]
@@ -49,6 +50,16 @@ pub enum DomainKind {
     EGFLikeCalciumBinding,
 
     TB,
+}
+
+impl Display for DomainKind {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            DomainKind::EGFLike => write!(f, "EGF"),
+            DomainKind::EGFLikeCalciumBinding => write!(f, "EGFCB"),
+            DomainKind::TB => write!(f, "TB"),
+        }
+    }
 }
 
 
@@ -66,8 +77,9 @@ pub fn process_domains(path: &str) -> Result<Vec<Domain>, Box<dyn Error>> {
     let entry: UniProtEntry = serde_json::from_reader(reader)?;
     let domains = entry.features.iter()
         .filter(|feature| feature.feature_type == "Domain")
-        .map(|feature| {
-            let name = feature.description.clone();
+        .enumerate()
+        .map(|(global_index, feature)| {
+            let name = &feature.description;
 
             let (kind, raw_number) = if name.ends_with("; calcium-binding") {
                 (DomainKind::EGFLikeCalciumBinding, &name["EGF-like ".len()..(name.len() - "; calcium-binding".len())])
@@ -81,8 +93,9 @@ pub fn process_domains(path: &str) -> Result<Vec<Domain>, Box<dyn Error>> {
 
             Ok(Domain {
                 kind,
+                global_index,
 
-                name,
+                name: format!("{} {}", &kind, number),
                 number,
 
                 start_position: feature.location.start.value,

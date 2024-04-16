@@ -11,7 +11,7 @@ with (shared.root_path / 'structure/output/data.pkl').open('rb') as file:
 
 
 domain_kinds = pkl_data['domain_kinds']
-domains = pd.DataFrame.from_records(pkl_data['domains'], index='name')
+domains = pd.DataFrame.from_records(pkl_data['domains'], index='global_index')
 effect_labels = pkl_data['effect_labels']
 exons = pd.DataFrame.from_records(pkl_data['exons'], index='name')
 mutations = pd.DataFrame.from_records(pkl_data['mutations'], index='name')
