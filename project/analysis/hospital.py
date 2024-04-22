@@ -3,7 +3,7 @@ import pandas as pd
 from . import shared
 
 
-with (shared.root_path / 'sources/hospital-structure.csv').open() as file:
+with (shared.root_path / 'sources/hospital/structure.csv').open() as file:
   df = pd.read_csv(file)
 
 

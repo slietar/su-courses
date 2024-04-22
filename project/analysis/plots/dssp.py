@@ -21,7 +21,7 @@ im = ax.imshow(df.values.T, aspect='auto', cmap='plasma', extent=((0.5, data.pro
 highlight_domains(ax, len(df.columns))
 
 ax.set_yticks(
-  labels=df.columns,
+  labels=reversed(df.columns),
   ticks=(np.arange(len(df.columns)) + 0.5)
 )
 

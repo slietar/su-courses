@@ -2,7 +2,7 @@ import numpy as np
 import pandas as pd
 import pydssp
 
-from . import data, shared
+from . import data, shared, utils
 from .folding_targets import target_domains
 
 
@@ -39,34 +39,45 @@ def read_pdbtext_with_checking(pdbstring: str):
     return coords
 
 
-ss_contextualized = list[int]()
-ss_pruned = list[int]()
-ss_positions = list[int]()
+@utils.cache
+def compute_dssp():
+  ss_contextualized = list[int]()
+  ss_pruned = list[int]()
+  ss_positions = list[int]()
 
-for domain_index, (_, domain) in enumerate(data.domains.iterrows()):
-  target_domain = target_domains.loc[domain.name]
+  for _, domain in enumerate(data.domains.itertuples()):
+    target_domain = target_domains.loc[domain.name]
 
-  with (shared.output_path / f'structures/alphafold-contextualized/{domain_index:04}.pdb').open() as file:
-    pdb_contextualized = read_pdbtext_with_checking(file.read())
+    with (shared.output_path / f'structures/alphafold-contextualized/{domain.global_index:04}.pdb').open() as file:
+      pdb_contextualized = read_pdbtext_with_checking(file.read())
 
-  with (shared.output_path / f'structures/alphafold-pruned/{domain_index:04}.pdb').open() as file:
-    pdb_pruned = read_pdbtext_with_checking(file.read())
-
-
-  domain_ss_contextualized = pydssp.assign(pdb_contextualized, out_type='index')
-  domain_ss_pruned = pydssp.assign(pdb_pruned, out_type='index')
-
-  ss_contextualized += list(domain_ss_contextualized[(target_domain.rel_start_position - 1):target_domain.rel_end_position])
-  ss_pruned += list(domain_ss_pruned)
-
-  ss_positions += range(domain.start_position, domain.end_position + 1)
+    with (shared.output_path / f'structures/alphafold-pruned/{domain.global_index:04}.pdb').open() as file:
+      pdb_pruned = read_pdbtext_with_checking(file.read())
 
 
-dssp = pd.DataFrame.from_dict(dict(
-  ss_contextualized=ss_contextualized,
-  ss_pruned=ss_pruned,
-  position=ss_positions
-)).set_index('position')
+    domain_ss_contextualized = pydssp.assign(pdb_contextualized, out_type='index')
+    domain_ss_pruned = pydssp.assign(pdb_pruned, out_type='index')
+
+    ss_contextualized += list(domain_ss_contextualized[(target_domain.rel_start_position - 1):target_domain.rel_end_position])
+    ss_pruned += list(domain_ss_pruned)
+
+    ss_positions += range(domain.start_position, domain.end_position + 1)
+
+  with (shared.root_path / 'sources/dssp.csv').open() as file:
+    dssp_global = pd.read_csv(file).set_index('position').loc[:, 'secondary index'].rename('ss_global')
+
+  return pd.DataFrame(dssp_global).join(
+     pd.DataFrame.from_dict(dict(
+      ss_contextualized=ss_contextualized,
+      ss_pruned=ss_pruned,
+      position=ss_positions
+    )).set_index('position'),
+    how='outer'
+  )
+
+# ).join(dssp_global, how='outer')
+
+dssp = compute_dssp()
 
 dssp_labels = [
   'loop',
@@ -79,3 +90,7 @@ __all__ = [
   'dssp',
   'dssp_labels'
 ]
+
+
+if __name__ == '__main__':
+   print(dssp)
