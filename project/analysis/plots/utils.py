@@ -48,6 +48,6 @@ def highlight_domains(ax: Axes, y: float):
 
     ax.add_artist(rect)
 
-  for hospital_domain in hospital_domains.itertuples():
-    if not pd.isna(hospital_domain.number):
-      ax.text((hospital_domain.start_position + hospital_domain.end_position) * 0.5, y + 0.75, str(hospital_domain.number), ha='center', va='center', fontsize=8, color='white')
+  for domain in data.domains.loc[:, ['start_position', 'end_position']].merge(hospital_domains.loc[:, ['number', 'unip_name']], left_index=True, right_on='unip_name').itertuples():
+    if not pd.isna(domain.number):
+      ax.text((domain.start_position + domain.end_position) * 0.5, y + 0.75, str(domain.number), ha='center', va='center', fontsize=10, color='white')

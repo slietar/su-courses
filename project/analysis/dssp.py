@@ -45,7 +45,7 @@ def compute_dssp():
   ss_pruned = list[int]()
   ss_positions = list[int]()
 
-  for _, domain in enumerate(data.domains.itertuples()):
+  for domain in data.domains.itertuples():
     target_domain = target_domains.loc[domain.name]
 
     with (shared.output_path / f'structures/alphafold-contextualized/{domain.global_index:04}.pdb').open() as file:
