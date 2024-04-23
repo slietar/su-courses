@@ -28,16 +28,17 @@ all_mutations = pd.concat([
 gemme_threshold = -0.779
 protein_length = len(sequence)
 
-interest_regions = {
-  'Neonat': (951, 1362),
-  'TB5': (1689, 1762)
-}
+interest_regions = pd.DataFrame.from_records([
+  dict(name='Neonat', start_position=951, end_position=1362),
+  dict(name='TB5', start_position=1689, end_position=1762)
+]).set_index('name', drop=False)
 
 
 if __name__ == '__main__':
   for df, label in [
     (domains, 'Domains'),
     (exons, 'Exons'),
+    (interest_regions, 'Interest regions'),
     (mutations, 'Mutations'),
     (structures, 'Experimental structures'),
     (variants, 'Variants')
@@ -55,6 +56,7 @@ __all__ = [
   'effect_labels',
   'exons',
   'gemme_threshold',
+  'interest_regions',
   'mutations',
   'pathogenicity_labels',
   'protein_length',

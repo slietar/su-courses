@@ -1,5 +1,7 @@
 from matplotlib import patches
 from matplotlib.axes import Axes
+from matplotlib.colorbar import Colorbar
+import numpy as np
 import pandas as pd
 
 from .. import data
@@ -36,18 +38,53 @@ def highlight_domains(ax: Axes, y: float):
 
     ax.add_artist(rect)
 
-  for start_position, end_position in data.interest_regions.values():
+  for region in data.interest_regions.itertuples():
     rect = patches.Rectangle(
-      [start_position - 0.5, y + 0.25],
-      end_position - start_position + 1,
+      [region.start_position - 0.5, y + 0.25],
+      region.end_position - region.start_position + 1,
       0.25,
       color='blueviolet',
-      alpha=0.5,
+      alpha=0.8,
       linewidth=0
     )
 
     ax.add_artist(rect)
+    ax.text((region.start_position + region.end_position) * 0.5, y + 0.375, region.name, ha='center', va='center', fontsize=10, color='white')
 
   for domain in data.domains.loc[:, ['start_position', 'end_position']].merge(hospital_domains.loc[:, ['number', 'unip_name']], left_index=True, right_on='unip_name').itertuples():
     if not pd.isna(domain.number):
       ax.text((domain.start_position + domain.end_position) * 0.5, y + 0.75, str(domain.number), ha='center', va='center', fontsize=10, color='white')
+
+
+def set_colobar_label(cbar: Colorbar, label: str):
+  cbar.ax.get_yaxis().labelpad = 15
+  cbar.ax.set_ylabel(label, rotation=270)
+
+
+class ProteinMap:
+  def __init__(self, ax: Axes, protein_length: int = data.protein_length):
+    self.ax = ax
+    self.protein_length = protein_length
+    self.ylabels = list[str]()
+
+
+  def plot_dataframe(self, df: pd.DataFrame, /):
+    df_reindexed = df.reindex(index=range(1, self.protein_length + 1), fill_value=np.nan)
+    im = self.ax.imshow(df_reindexed.values.T, aspect='auto', cmap='plasma', extent=((0.5, self.protein_length + 0.5, len(self.ylabels), len(self.ylabels) + len(df.columns))), interpolation='none')
+
+    self.ylabels += list(df.columns)
+    return im
+
+  def finish(self):
+    highlight_domains(self.ax, len(self.ylabels))
+
+    x_ticks = np.arange(199, data.protein_length + 1, 200)
+    self.ax.set_xticks(x_ticks + 0.5)
+    self.ax.set_xticklabels([str(x + 1) for x in x_ticks])
+
+    self.ax.set_ylim(0, len(self.ylabels) + 1)
+    self.ax.tick_params('y', left=False)
+    self.ax.set_yticks(
+      labels=reversed(self.ylabels),
+      ticks=(np.arange(len(self.ylabels)) + 0.5)
+    )
