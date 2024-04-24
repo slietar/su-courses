@@ -7,15 +7,12 @@ from . import data
 
 
 def map_variants(variants: pd.DataFrame):
-  allele_count = variants.allele_count.sum()
   drop_levels = [1, 2]
+  mask = ~functools.reduce(operator.or_, (variants.pathogenicity == i for i in drop_levels)).any()
 
-  if functools.reduce(operator.or_, (variants.pathogenicity == i for i in drop_levels)).any():
-    return 0
+  return (variants.allele_count * mask).sum()
 
-  return allele_count
-
-polymorphism_score = data.variants.groupby('position').apply(map_variants).reindex(data.position_index, fill_value=0)
+polymorphism_score = data.variants.groupby('position').apply(map_variants).reindex(data.position_index, fill_value=0).rename('polymorphism')
 
 
 __all__ = [

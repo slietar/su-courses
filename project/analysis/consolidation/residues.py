@@ -28,7 +28,7 @@ def compute_consolidated_residues():
     series = pd.Series(domains, index=positions, name='domain')
     return pd.get_dummies(series, prefix='domain')
 
-  mutation_effects = data.mutations.loc[:, ['effect_cardio', 'effect_ophtalmo', 'effect_sk', 'position']].groupby('position').aggregate(np.max) > 1
+  mutation_effects = data.mutations.loc[:, ['effect_cardio', 'effect_neuro', 'effect_ophtalmo', 'effect_pneumothorax', 'effect_severe', 'effect_sk', 'position']].groupby('position').aggregate(np.max) > 0
 
   residues = pd.concat([
     cv.loc[:, 10.0].rename('cv_10'),
@@ -39,7 +39,8 @@ def compute_consolidated_residues():
     rmsf_by_position,
     plddt['alphafold_pruned'].rename('plddt'),
     pae_mean_by_position,
-    mutation_effects.reindex(data.position_index, fill_value=False)
+    mutation_effects.reindex(data.position_index, fill_value=False),
+    polymorphism_score
   ], axis=1)
 
   return residues.dropna()

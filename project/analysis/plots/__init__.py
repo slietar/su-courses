@@ -8,6 +8,7 @@ plt.rcParams['mathtext.sf'] = 'Helvetica'
 plt.rcParams['font.size'] = 11.0
 plt.rcParams['figure.dpi'] = 288
 plt.rcParams['grid.color'] = 'whitesmoke'
+plt.rcParams['axes.axisbelow'] = True
 plt.rcParams['axes.titlesize'] = 'medium'
 plt.rcParams['axes.prop_cycle'] = cycler(color=[
   '#348abd',

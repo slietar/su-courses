@@ -1,3 +1,4 @@
+from matplotlib.colors import LogNorm
 import pandas as pd
 from matplotlib import pyplot as plt
 
@@ -82,11 +83,14 @@ im_pae = map.plot_dataframe(
 
 # Polymorphism score
 
-map.plot_dataframe(
-  polymorphism_score.rename('Polymorphism score'),
-  vmin=0,
-  vmax=100
+im_poly = map.plot_dataframe(
+  polymorphism_score.rename('Polymorphism score'), # + 1,
+  vmax=1000
+  # norm=LogNorm()
 )
+
+# cbar = fig.colorbar(im_poly, ax=ax, pad=0.0)
+# set_colobar_label(cbar, 'Polymorphism score')
 
 
 # Output
