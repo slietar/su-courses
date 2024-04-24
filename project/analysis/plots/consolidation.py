@@ -7,7 +7,8 @@ from ..gemme import gemme_mean
 from ..pae import pae_mean_by_position
 from ..plddt import plddt
 from ..rmsf import rmsf_by_position
-from .dssp import dssp
+from ..polymorphism import polymorphism_score
+from ..dssp import dssp
 from .utils import ProteinMap, set_colobar_label
 
 
@@ -77,6 +78,15 @@ im_pae = map.plot_dataframe(
 
 # cbar = fig.colorbar(im_pae, ax=ax, pad=0.0)
 # set_colobar_label(cbar, 'PAE')
+
+
+# Polymorphism score
+
+map.plot_dataframe(
+  polymorphism_score.rename('Polymorphism score'),
+  vmin=0,
+  vmax=100
+)
 
 
 # Output

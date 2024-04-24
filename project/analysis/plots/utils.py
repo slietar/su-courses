@@ -68,10 +68,10 @@ class ProteinMap:
     self.ylabels = list[str]()
 
 
-  def plot_dataframe(self, df_like: pd.DataFrame | pd.Series, /):
+  def plot_dataframe(self, df_like: pd.DataFrame | pd.Series, /, **kwargs):
     df = df_like if isinstance(df_like, pd.DataFrame) else df_like.to_frame()
-    df_reindexed = df.reindex(index=range(1, self.protein_length + 1), fill_value=np.nan)
-    im = self.ax.imshow(df_reindexed.values.T, aspect='auto', cmap='plasma', extent=((0.5, self.protein_length + 0.5, -len(self.ylabels) - len(df.columns), -len(self.ylabels))), interpolation='none')
+    df_reindexed = df.reindex(index=data.position_index, fill_value=np.nan)
+    im = self.ax.imshow(df_reindexed.to_numpy(dtype=float, na_value=np.nan).T, aspect='auto', cmap='plasma', extent=((0.5, self.protein_length + 0.5, -len(self.ylabels) - len(df.columns), -len(self.ylabels))), interpolation='none', **kwargs)
 
     self.ylabels += list(df.columns)
     return im

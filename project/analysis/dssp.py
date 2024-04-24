@@ -64,18 +64,16 @@ def compute_dssp():
     ss_positions += range(domain.start_position, domain.end_position + 1)
 
   with (shared.root_path / 'sources/dssp.csv').open() as file:
-    dssp_global = pd.read_csv(file).set_index('position').loc[:, 'secondary index'].rename('ss_global')
+    dssp_global = pd.read_csv(file).set_index('position').loc[:, 'secondary index'].astype('Int64').rename('ss_global')
 
   return pd.DataFrame(dssp_global).join(
      pd.DataFrame.from_dict(dict(
       ss_contextualized=ss_contextualized,
       ss_pruned=ss_pruned,
       position=ss_positions
-    )).set_index('position'),
+    ), dtype='Int64').set_index('position'),
     how='outer'
   )
-
-# ).join(dssp_global, how='outer')
 
 dssp = compute_dssp()
 
@@ -93,4 +91,4 @@ __all__ = [
 
 
 if __name__ == '__main__':
-   print(dssp)
+   print(dssp.iloc[100:])

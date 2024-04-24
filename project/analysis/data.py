@@ -32,6 +32,8 @@ interest_regions = pd.DataFrame.from_records([
   dict(name='TB5', start_position=1689, end_position=1762)
 ]).set_index('name', drop=False)
 
+position_index = pd.Index(range(1, protein_length + 1), name='position')
+
 
 if __name__ == '__main__':
   for df, label in [

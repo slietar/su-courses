@@ -10,6 +10,9 @@ struct AminoAcid {
 
 #[derive(Debug, Deserialize)]
 struct RawVariant {
+    #[serde(rename = "Allele Count")]
+    allele_count: usize,
+
     #[serde(flatten)]
     clinical_effect: Option<RawClinicalEffect>,
 
@@ -63,6 +66,7 @@ enum RawClinicalEffect {
 
 #[derive(Debug, Deserialize, Serialize)]
 pub struct Variant {
+    allele_count: usize,
     frequency: f32,
     genomic_position: usize,
     name: String,
@@ -158,6 +162,7 @@ pub fn process_variants(path: &str) -> Result<VariantData, Box<dyn Error>> {
             };
 
             variants.push(Variant {
+                allele_count: raw_variant.allele_count,
                 alternate_aa: alternate_residue,
                 alternate_nucleotides: raw_variant.alternate_nucleotides,
                 frequency: raw_variant.frequency,
