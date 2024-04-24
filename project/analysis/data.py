@@ -12,7 +12,6 @@ with (shared.root_path / 'structure/output/data.pkl').open('rb') as file:
 
 domain_kinds = pkl_data['domain_kinds']
 domains = pd.DataFrame.from_records(pkl_data['domains']).set_index('name', drop=False)
-effect_labels = pkl_data['effect_labels']
 exons = pd.DataFrame.from_records(pkl_data['exons']).set_index('name', drop=False)
 mutations = pd.DataFrame.from_records(pkl_data['mutations']).set_index('name', drop=False)
 pathogenicity_labels = pkl_data['pathogenicity_labels']
@@ -44,7 +43,7 @@ if __name__ == '__main__':
     (variants, 'Variants')
   ]:
     print(label.upper())
-    print(df.head())
+    print(df)
     print()
     print()
 
@@ -53,7 +52,6 @@ __all__ = [
   'all_mutations',
   'domain_kinds',
   'domains',
-  'effect_labels',
   'exons',
   'gemme_threshold',
   'interest_regions',

@@ -22,7 +22,6 @@ fn main() -> Result<(), Box<dyn Error>> {
     let output = self::output::Output {
         domain_kinds: self::features::DOMAIN_KINDS.map(|kind| kind.to_string()).to_vec(),
         domains,
-        effect_labels: self::mutations::EFFECT_LABELS.map(|label| label.to_string()).to_vec(),
         exons: protein_data.exons,
         mutations,
         pathogenicity_labels: variant_data.pathogenicity_labels.iter().map(|kind| kind.to_string()).collect::<Vec<_>>(),

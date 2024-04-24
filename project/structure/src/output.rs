@@ -5,7 +5,6 @@ use serde::{Deserialize, Serialize};
 pub struct Output {
     pub domain_kinds: Vec<String>,
     pub domains: Vec<super::features::Domain>,
-    pub effect_labels: Vec<String>,
     pub exons: Vec<super::gn::Exon>,
     pub mutations: Vec<super::mutations::Mutation>,
     pub pathogenicity_labels: Vec<String>,
