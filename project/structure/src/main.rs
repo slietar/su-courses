@@ -1,5 +1,4 @@
 use std::{error::Error, fs::File};
-use serde::Serialize;
 use serde_pickle::SerOptions;
 
 mod features;
@@ -13,7 +12,7 @@ mod variants;
 
 fn main() -> Result<(), Box<dyn Error>> {
     let domains = self::features::process_domains("./data/features.json")?;
-    let mutations = self::mutations::process_mutations("./data/mutations.csv")?;
+    let mutations = self::mutations::process_mutations()?;
     let plddt = self::plddt::process_plddt()?;
     let protein_data = self::gn::process_coordinates("./data/coordinates.json")?;
     let structures = self::structures::process_structures()?;

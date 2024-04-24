@@ -47,5 +47,5 @@ __all__ = [
 
 
 if __name__ == '__main__':
-  with (shared.root_path / 'folding/target_sequences.json').open('w') as file:
+  with (shared.root_path / 'output/target_sequences.json').open('w') as file:
     json.dump(target_sequences, file)

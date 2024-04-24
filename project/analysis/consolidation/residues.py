@@ -1,9 +1,11 @@
+import pickle
+import numpy as np
 import pandas as pd
 
-from .. import utils
+from .. import shared, utils
 
 
-@utils.cache
+# @utils.cache
 def compute_consolidated_residues():
   from .. import data
   from ..cv import cv
@@ -25,6 +27,7 @@ def compute_consolidated_residues():
     series = pd.Series(domains, index=positions, name='domain')
     return pd.get_dummies(series, prefix='domain')
 
+  mutation_effects = data.mutations.loc[:, ['effect_cardio', 'effect_ophtalmo', 'effect_sk', 'position']].groupby('position').aggregate(np.max) > 1
 
   shared_index = pd.Index(range(1, data.protein_length + 1), name='position')
 
@@ -36,7 +39,8 @@ def compute_consolidated_residues():
     gemme_mean,
     rmsf_by_position,
     plddt['alphafold_pruned'].rename('plddt'),
-    pae_mean_by_position
+    pae_mean_by_position,
+    mutation_effects.reindex(shared_index, fill_value=False)
   ], axis=1)
 
   return residues
@@ -48,3 +52,7 @@ consolidated_residues = compute_consolidated_residues()
 __all__ = [
   'consolidated_residues'
 ]
+
+
+if __name__ == '__main__':
+  print(consolidated_residues)
