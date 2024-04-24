@@ -68,23 +68,24 @@ class ProteinMap:
     self.ylabels = list[str]()
 
 
-  def plot_dataframe(self, df: pd.DataFrame, /):
+  def plot_dataframe(self, df_like: pd.DataFrame | pd.Series, /):
+    df = df_like if isinstance(df_like, pd.DataFrame) else df_like.to_frame()
     df_reindexed = df.reindex(index=range(1, self.protein_length + 1), fill_value=np.nan)
-    im = self.ax.imshow(df_reindexed.values.T, aspect='auto', cmap='plasma', extent=((0.5, self.protein_length + 0.5, len(self.ylabels), len(self.ylabels) + len(df.columns))), interpolation='none')
+    im = self.ax.imshow(df_reindexed.values.T, aspect='auto', cmap='plasma', extent=((0.5, self.protein_length + 0.5, -len(self.ylabels) - len(df.columns), -len(self.ylabels))), interpolation='none')
 
     self.ylabels += list(df.columns)
     return im
 
   def finish(self):
-    highlight_domains(self.ax, len(self.ylabels))
+    highlight_domains(self.ax, 0)
 
     x_ticks = np.arange(199, data.protein_length + 1, 200)
     self.ax.set_xticks(x_ticks + 0.5)
     self.ax.set_xticklabels([str(x + 1) for x in x_ticks])
 
-    self.ax.set_ylim(0, len(self.ylabels) + 1)
+    self.ax.set_ylim(-len(self.ylabels), 1)
     self.ax.tick_params('y', left=False)
     self.ax.set_yticks(
-      labels=reversed(self.ylabels),
-      ticks=(np.arange(len(self.ylabels)) + 0.5)
+      labels=self.ylabels,
+      ticks=(-np.arange(len(self.ylabels)) - 0.5)
     )

@@ -2,7 +2,6 @@ from typing import IO, Literal
 
 import numpy as np
 import pandas as pd
-from pymol import cmd
 
 from . import data, shared, utils
 from .msa import msa
@@ -35,6 +34,8 @@ def parse_pdb_atoms(file: IO[str], /):
 
 
 def get_aligned_residue_coords(domain_kind: str, *, mode: Literal['ca', 'mean'] = 'mean'):
+  from pymol import cmd
+
   all_residue_coords = np.zeros((*msa[domain_kind].shape, 3)) * np.nan # (domains, residues, xyz)
   domains = data.domains[data.domains.kind == domain_kind]
 
