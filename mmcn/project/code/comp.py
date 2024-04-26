@@ -39,6 +39,8 @@ stat_points = sympy.solve(Eq(b, 0), x)
 
 get_stat_points = lambda zs: np.asarray(sympy.lambdify(z, stat_points, 'numpy')(np.asarray(zs, dtype=complex)))
 get_trace = lambda xs: np.asarray(sympy.lambdify(x, jacobian.trace(), 'numpy')(xs))
+get_det = lambda xs: np.asarray(sympy.lambdify(x, jacobian.det(), 'numpy')(xs))
+get_y = lambda xs: np.asarray(sympy.lambdify(x, a[0], 'numpy')(xs))
 
 
 # Solution boundary test

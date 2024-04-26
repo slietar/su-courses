@@ -19,7 +19,8 @@ stat_points_x = stat_points_x[mask][order].real
 stat_points_z = stat_points_z[mask][order].real
 
 stat_points_trace = comp.get_trace(stat_points_x)
-stat_points_stable = stat_points_trace.real < 0.0
+stat_points_det = comp.get_det(stat_points_x)
+stat_points_stable = (stat_points_trace.real < 0.0) & (stat_points_det.real > 0.0)
 
 
 fig, ax = plt.subplots()
