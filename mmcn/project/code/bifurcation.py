@@ -3,12 +3,29 @@ from matplotlib import pyplot as plt
 from scipy.interpolate import interp1d
 
 from . import comp, config, utils
+from .cycle import limit_cycle, stat_points as limit_cycle_sp
 
 
 stat_points = comp.get_stat_points(np.linspace(-2, 12, 10000))
 
 
 fig, ax = plt.subplots()
+
+ax.plot(
+  limit_cycle_sp[:, 2],
+  limit_cycle[:, 0],
+  color='C5',
+  label='Cycle limite'
+)
+
+ax.plot(
+  limit_cycle_sp[:, 2],
+  limit_cycle[:, 1],
+  color='C5'
+)
+
+ax.scatter([limit_cycle_sp[0, 2]] * 2, limit_cycle[0, :], color='C5', label='Connexion homocline', marker='*', zorder=5)
+
 
 current_pos = 0
 

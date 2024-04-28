@@ -76,3 +76,8 @@ On observe quatre bifurcations, pour $z$ allant de -2 à 12 :
 2. En $z approx -0.93$ ou $x = 1 - sqrt(6)/3 approx 0.18$, une bifurcation de Hopf cause l'apparition d'un cycle limite stable autour d'un point fixe instable précédemment stable.
 3. En $z = 5/27 approx 0.19$, une bifurcation pli cause la disparition des deux points fixes stables.
 4. En $z approx 11.59$ ou $x = 1 + sqrt(6)/3 approx 1.82$, une bifurcation de Hopf cause la disparition du cycle limite.
+
+#figure(
+  image("../output/eigenvalues.png"),
+  caption: [Valeurs propres]
+)
