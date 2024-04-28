@@ -4,6 +4,8 @@ from sympy.calculus.util import continuous_domain
 import numpy as np
 import sympy
 
+from . import utils
+
 
 c = 1
 z = Symbol('z', real=True)
@@ -20,7 +22,7 @@ jacobian: Matrix = system.jacobian(Matrix([x, y]))
 
 # print(sol.start.evalf(), sol.end.evalf())
 # print(sympy.latex(sol.start))
-eigenval1, eigenval2 = iter(jacobian.eigenvals().keys())
+# eigenval1, eigenval2 = iter(jacobian.eigenvals().keys())
 # trace = jacobian.trace()
 
 # print(l1)
@@ -33,14 +35,40 @@ eigenval1, eigenval2 = iter(jacobian.eigenvals().keys())
 #   Eq(system[1], 0)
 # ), (x, y)))
 
-a = sympy.solve(Eq(system[1], 0), y)
-b = system[0].subs(y, a[0])
-stat_points = sympy.solve(Eq(b, 0), x)
+eq1_sol = sympy.solve(Eq(system[1], 0), y)[0]
+eq0_sols = system[0].subs(y, eq1_sol) # type: ignore
+x_sols = sympy.solve(Eq(eq0_sols, 0), x)
 
-get_stat_points = lambda zs: np.asarray(sympy.lambdify(z, stat_points, 'numpy')(np.asarray(zs, dtype=complex)))
-get_trace = lambda xs: np.asarray(sympy.lambdify(x, jacobian.trace(), 'numpy')(xs))
-get_det = lambda xs: np.asarray(sympy.lambdify(x, jacobian.det(), 'numpy')(xs))
-get_y = lambda xs: np.asarray(sympy.lambdify(x, a[0], 'numpy')(xs))
+# get_stat_points = lambda zs: np.asarray(sympy.lambdify(z, stat_points, 'numpy')(np.asarray(zs, dtype=complex)))
+# get_y = lambda xs: np.asarray(sympy.lambdify(x, a[0], 'numpy')(xs))
+
+def get_stat_points(zr: np.ndarray):
+  xs_unflattened = np.asarray(sympy.lambdify(z, x_sols, 'numpy')(zr.astype(complex)))
+  xs = xs_unflattened.ravel()
+  zs = np.tile(zr, xs_unflattened.shape[0])
+
+  mask = utils.isclosereal(xs)
+  order = np.argsort(xs[mask])
+
+  xs = xs[mask][order].real
+  zs = zs[mask][order].real
+
+  ys = np.asarray(sympy.lambdify(x, eq1_sol, 'numpy')(xs))
+
+  return np.array([xs, ys, zs]).T
+
+get_trace = lambda sp: np.asarray(sympy.lambdify(x, jacobian.trace(), 'numpy')(sp[:, 0]))
+get_det = lambda sp: np.asarray(sympy.lambdify(x, jacobian.det(), 'numpy')(sp[:, 0]))
+is_stable = lambda sp: (get_trace(sp).real < 0.0) & (get_det(sp).real > 0.0)
+
+
+eigenval1, eigenval2 = iter(jacobian.eigenvals().keys())
+
+def get_eignvalues(sp: np.ndarray):
+  return np.asarray(sympy.lambdify(x, list(jacobian.eigenvals().keys()), 'numpy')(sp[:, 0].astype(complex))).T
+
+# sp = get_stat_points(np.linspace(-0.1, 12, 100))
+# print(get_eignvalues(sp).shape)
 
 
 # Solution boundary test

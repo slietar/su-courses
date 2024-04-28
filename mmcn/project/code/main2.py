@@ -29,7 +29,7 @@ fig, ax = plt.subplots()
 
 
 # stat_points = np.asarray([sympy.lambdify(comp.z, stat_point, 'numpy')(zs) for stat_point in comp.stat_points])
-stat_points = np.asarray(sympy.lambdify(comp.z, comp.stat_points, 'numpy')(zs))
+stat_points = np.asarray(sympy.lambdify(comp.z, comp.x_sols, 'numpy')(zs))
 
 # trace = sympy.lambdify(comp.x, comp.jacobian.trace(), 'numpy')(stat_points)
 # stable = trace.real > 0
