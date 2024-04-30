@@ -10,8 +10,8 @@ fig, ax = plt.subplots(figsize=(25, 8))
 map = ProteinMap(ax)
 im = map.plot_dataframe(
   pae_mean_by_position.rename(columns=dict(
-    pae1='Mean over column',
-    pae2='Mean over row'
+    pae_inter='Mean over residues of neighboring domains',
+    pae_intra='Mean over residues of the domain itself'
   ))
 )
 map.finish()

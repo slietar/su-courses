@@ -72,8 +72,8 @@ im_rmsf = map.plot_dataframe(
 
 im_pae = map.plot_dataframe(
   pae_mean_by_position.rename(columns=dict(
-    pae1='Mean PAE over column',
-    pae2='Mean PAE over row'
+    pae_inter='Mean PAE over residues of neighboring domains',
+    pae_intra='Mean PAE over residues of the domain itself'
   ))
 )
 
