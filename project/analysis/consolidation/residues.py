@@ -1,9 +1,10 @@
-import pickle
 import numpy as np
 import pandas as pd
 
 from .. import shared, utils
 
+
+# SecondaryStructureDtype = pd.CategoricalDtype(['helix', 'loop', 'strand'], ordered=True)
 
 @utils.cache
 def compute_consolidated_residues():
@@ -25,34 +26,56 @@ def compute_consolidated_residues():
       domains += [index] * (domain.end_position - domain.start_position + 1)
       positions += range(domain.start_position, domain.end_position + 1)
 
-    series = pd.Series(domains, index=positions, name='domain')
-    return pd.get_dummies(series, prefix='domain')
+    return pd.Series(domains, index=positions, name='domain')
+    # return pd.get_dummies(series, prefix='domain')
 
-  mutation_effects = data.mutations.loc[:, ['effect_cardio', 'effect_neuro', 'effect_ophtalmo', 'effect_pneumothorax', 'effect_severe', 'effect_sk', 'position']].groupby('position').aggregate(np.max) > 0
+  phenotypes = (data.mutations.loc[:, [
+    'effect_cardio',
+    'effect_cutaneous',
+    'effect_neuro',
+    'effect_ophtalmo',
+    'effect_pneumothorax',
+    'effect_severe',
+    'effect_sk',
+    'position'
+  ]].groupby('position').aggregate(np.max) > 0).reindex(data.position_index, fill_value=False)
 
-  residues = pd.concat([
+  native_descriptors = pd.concat([
     cv.loc[:, 10.0].rename('cv_10'),
     cv.loc[:, 20.0].rename('cv_20'),
-    get_domains().reindex(data.position_index, fill_value=False),
-    pd.get_dummies(dssp.ss_contextualized, prefix='dssp').reindex(data.position_index, fill_value=False),
+    # get_domains().astype('category'),
+    ## get_domains().reindex(data.position_index, fill_value=False),
+    ## pd.get_dummies(dssp.ss_contextualized, prefix='dssp').reindex(data.position_index, fill_value=False),
+    ## pd.Series(pd.Categorical.from_codes(dssp.ss_contextualized.dropna(), dtype=SecondaryStructureDtype)).reindex(data.position_index).rename('dssp'),
+    ## dssp.ss_contextualized.astype(SecondaryStructureDtype.dtype).reindex(data.position_index),
+    # dssp.ss_contextualized.astype('category').reindex(data.position_index).rename('dssp'),
     gemme_mean,
     rmsf_by_position,
-    plddt['alphafold_pruned'].rename('plddt'),
+    (polymorphism_score + 1).apply(np.log)
+  ], axis='columns').dropna()
+
+  classification_descriptors = pd.concat([
+    plddt.alphafold_pruned.rename('plddt'),
     pae_mean_by_position,
-    mutation_effects.reindex(data.position_index, fill_value=False),
-    polymorphism_score
-  ], axis=1)
+    get_domains(),
+    dssp.ss_contextualized.rename('dssp')
+  ], axis='columns').dropna()
 
-  return residues.dropna()
+  return native_descriptors, classification_descriptors, phenotypes
 
 
-consolidated_residues = compute_consolidated_residues()
+native_descriptors, classification_descriptors, phenotypes = compute_consolidated_residues()
+all_descriptors = native_descriptors.join(classification_descriptors)
 
 
 __all__ = [
-  'consolidated_residues'
+  'all_descriptors',
+  'classification_descriptors',
+  'native_descriptors',
+  'phenotypes'
 ]
 
 
 if __name__ == '__main__':
-  print(consolidated_residues)
+  print(all_descriptors)
+  print(phenotypes)
