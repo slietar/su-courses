@@ -64,7 +64,7 @@ La condition pour avoir des valeurs propres complexes conjuguées, c'est-à-dire
 $
   Delta = tr J(v_0, w_0)^2 - 4det J(v_0, w_0) &< 0 \
   9v_0^4 - 36v_0^3 + 30v_0^2 - 28v_0 + 1 &< 0 \
-  0.0371 < v_0 < 3.2681
+  0.037 < v_0 < 3.268
 $
 
 La condition pour avoir une bifurcation col-nœud est le passage d'une valeur propre par zéro, à condition de ne pas avoir de valeurs propres conjuguées :
@@ -92,17 +92,54 @@ On vérifie ces critères en traçant les valeurs propres des points stationnair
 
 === Question (c)
 
-Les points stationnaires sont les points d'intersection des deux nullclines et sont les solutions d'un polynôme de degré 3 que l'on peut donc résoudre analytiquement. On trace à la @bifurcation le diagramme de bifurcation obtenu à partir de ces solutions.
+Les points stationnaires sont les points d'intersection des deux nullclines et sont les solutions d'un polynôme de degré 3 que l'on peut donc résoudre analytiquement. On trace à la @bifurcation1 le diagramme de bifurcation obtenu à partir de ces solutions.
 
 #figure(
-  image("../output/bifurcation.png"),
+  image("../output/bifurcation1.png"),
   caption: [Diagramme de bifurcation]
-) <bifurcation>
+) <bifurcation1>
 
 On observe cinq bifurcations pour $z$ allant de -2 à 12 :
 
 1. En $z = -1$ et $x = 0$, une bifurcation col-nœud cause l'apparition d'un nœud stable et d'un col, en plus du nœud stable déjà existant.
-2. En $z approx -0.93$ et $x = 1 - sqrt(6)/3 approx 0.18$, une bifurcation de Hopf transforme un foyer stable (précédemment un nœud jusqu'en $z approx -0.997$ et $x approx 0.037$) en un foyer instable, mais sans cycle limite en raison de la collision de celui-ci avec le col.
+2. En $z approx -0.93$ et $x = 1 - sqrt(6)/3 approx 0.18$, une bifurcation de Hopf surcritique transforme un foyer stable (précédemment un nœud jusqu'en $z approx -0.997$ et $x approx 0.037$) en un foyer instable, mais sans cycle limite en raison de la collision de celui-ci avec le col.
 3. En $z approx -0.07$ et $x approx -0.92$, une bifurcation homocline cause l'apparition d'un cycle limite stable.
 3. En $z = 5/27 approx 0.19$ et $x = -4/3$, une bifurcation col-nœud cause la disparition du col et du nœud restant.
-4. En $z approx 11.59$ et $x = 1 + sqrt(6)/3 approx 1.82$, une bifurcation de Hopf cause la disparition du cycle limite et la transformation du foyer instable en un foyer stable.
+4. En $z approx 11.59$ et $x = 1 + sqrt(6)/3 approx 1.82$, une bifurcation de Hopf surcritique cause la disparition du cycle limite et la transformation du foyer instable en un foyer stable.
+
+
+== Second régime
+
+Le changement de $c = 2$ ne modifie pas les points stationnaires mais change leur nature. La jacobienne devient :
+
+$ J(v_0, w_0) = mat(-3/2 v_0^2 + 3v_0, 1/2; -10v_0, -1) $
+
+La condition pour avoir des valeurs propres complexes conjuguées est maintenant donnée par :
+
+$
+  Delta = tr J(v_0, w_0)^2 - 4det J(v_0, w_0) &< 0 \
+  9/4v_0^4 - 9v_0^3 + 6v_0^2 - 14v_0 + 1 &< 0 \
+  0.073 < v_0 < 3.724
+$
+
+Les bifurcation col-nœud en $v_0 = 0$ et $v_0 = -4/3$ ne changent pas. En revanche, les bifurcations de Hopf deviennent :
+
+$
+  tr J(v_0, w_0) &= 0 \
+  -3/2v_0^2 + 3v_0 - 1 &= 0 \
+  v_0 = 1 - sqrt(3)/3 "ou" v_0 = 1 + sqrt(3)/3
+$
+
+On trace à nouveau le diagramme de bifurcation à la @bifurcation2.
+
+#figure(
+  image("../output/bifurcation2.png"),
+  caption: [Diagramme de bifurcation]
+) <bifurcation2>
+
+Le changement majeur est la disparition de la bifurcation homocline. Les quatre bifurcations sont donc, pour $z$ allant de -2 à 12 :
+
+1. En $z = -1$ et $x = 0$, une bifurcation col-nœud cause l'apparition d'un nœud stable et d'un col, en plus du nœud stable déjà existant.
+2. En $z approx -0.93$ et $x = 1 - sqrt(3)/3 approx 0.42$, une bifurcation de Hopf surcritique transforme un foyer stable (précédemment un nœud jusqu'en $z approx -0.989$ et $x approx 0.073$) en un foyer instable avec un cycle limite stable.
+3. En $z = 5/27 approx 0.19$ et $x = -4/3$, une bifurcation col-nœud cause la disparition du col et du nœud restant.
+4. En $z approx 7.90$ et $x = 1 + sqrt(3)/3 approx 1.58$, une bifurcation de Hopf surcritique cause la disparition du cycle limite et la transformation du foyer instable en un foyer stable.

@@ -79,6 +79,7 @@ complex_eigenval_eq = jacobian.trace() ** 2 - 4 * jacobian.det()
 if __name__ == '__main__':
   print('Condition for complex conjugate eigenvalues:')
   print(format_ex(sympy.expand(complex_eigenval_eq)) + ' &< 0 \\')
+  print([f'{sol.evalf():.3f}' for sol in sympy.solve(Eq(complex_eigenval_eq, 0), x) if sol.is_real])
   print()
   # print(sympy.solve(complex_eigenval_eq < 0, x))
   # print(sympy.latex(sympy.solve(Eq(complex_eigenval_eq, 0), x)[0]))

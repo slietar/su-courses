@@ -3,7 +3,7 @@ import numpy as np
 from matplotlib import pyplot as plt
 from scipy.interpolate import interp1d
 
-from . import comp, config, utils
+from . import config
 
 
 def system(y: np.ndarray, *, c: float, z: float):
@@ -24,9 +24,6 @@ c = 1.0
 z = 3.0
 
 fig, ax = plt.subplots()
-
-# for z, ax in zip([-1.5, -0.5, 6, 12], axs.ravel()):
-# for z, ax in zip([-.95, -0.90, 0, 6], axs.ravel()):
 
 ylim = -28, 6
 x = np.linspace(-3.5, 4.5, 100)
@@ -52,8 +49,8 @@ sp = ax.streamplot(X, Y, UV_[0, :], UV_[1, :], color='lightgray', density=1.0, l
 # sp.lines.set_alpha(0.5)
 # sp.arrows.set_alpha(0.0)
 
-ax.plot(x, ncl[0, :], label='Nullcline $x\' = 0$', linestyle='dashed')
-ax.plot(x, ncl[1, :], label='Nullcline $y\' = 0$', linestyle='dashed')
+ax.plot(x, ncl[0, :], label='Nullcline $x\' = 0$')
+ax.plot(x, ncl[1, :], label='Nullcline $y\' = 0$')
 
 ax.legend()
 ax.set_ylim(*ylim)

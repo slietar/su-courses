@@ -24,7 +24,8 @@ ax.plot(
   color='C5'
 )
 
-ax.scatter([limit_cycle_sp[0, 2]] * 2, limit_cycle[0, :], color='C5', label='Connexion homocline', marker='*', zorder=5)
+if comp.c == 1:
+  ax.scatter([limit_cycle_sp[0, 2]] * 2, limit_cycle[0, :], color='C5', label='Connexion homocline', marker='*', zorder=5)
 
 
 current_pos = 0
@@ -43,13 +44,18 @@ for index, (stable, count) in enumerate(utils.group(comp.is_stable(stat_points))
 
 bifurcations_z = interp1d(stat_points[:, 0], stat_points[:, 2])(comp.bifurcations_x)
 
-# print(interp1d(stat_points[:, 0], stat_points[:, 2])(0.0371))
+print(interp1d(stat_points[:, 0], stat_points[:, 2])(0.073))
+
+print(comp.bifurcations_x)
+print(bifurcations_z)
 
 ax.scatter(
   bifurcations_z,
   comp.bifurcations_x,
   color='C1',
-  label='Bifurcation'
+  label='Bifurcation',
+  s=18,
+  zorder=2
 )
 
 ax.set_xlabel('$z$')
@@ -59,5 +65,5 @@ ax.grid()
 ax.legend(loc='lower right')
 
 
-with (config.output_path / 'bifurcation.png').open('wb') as file:
+with (config.output_path / 'bifurcation2.png').open('wb') as file:
   fig.savefig(file)
