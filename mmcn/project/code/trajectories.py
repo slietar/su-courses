@@ -21,43 +21,46 @@ def nullclines(x: np.ndarray, *, z: float):
 
 
 c = 1.0
+z = 3.0
 
-fig, axs = plt.subplots(ncols=2, nrows=2)
-ax: Axes
+fig, ax = plt.subplots()
 
-for z, ax in zip([-1.5, -0.5, 6, 12], axs.ravel()):
+# for z, ax in zip([-1.5, -0.5, 6, 12], axs.ravel()):
 # for z, ax in zip([-.95, -0.90, 0, 6], axs.ravel()):
-  ax.set_title(f'z = {z}')
 
-  ylim = -25, 5
-  x = np.linspace(-3, 4, 100)
-  # ylim = 0.6, 1.0
-  # x = np.linspace(0.1, 0.3, 50)
-  y = np.linspace(*ylim, 100)
-  X, Y = np.meshgrid(x, y)
+ylim = -28, 6
+x = np.linspace(-3.5, 4.5, 100)
 
-  ncl = nullclines(x, z=z)
+y = np.linspace(*ylim, 100)
+X, Y = np.meshgrid(x, y)
 
-  XY = np.c_[X.flat, Y.flat].T
-  UV = system(XY, c=c, z=z)
-  UV_ = system(np.array([X, Y]), c=c, z=z)
-  UV_norm = np.linalg.norm(UV, axis=0)
-  UV /= UV_norm
+ncl = nullclines(x, z=z)
 
-  # q = ax.quiver(XY[0, :], XY[1, :], UV[0, :], UV[1, :], UV_norm, cmap='gray_r')
-  # plt.colorbar(q, ax=ax)
+XY = np.c_[X.flat, Y.flat].T
+UV = system(XY, c=c, z=z)
+UV_ = system(np.array([X, Y]), c=c, z=z)
+UV_norm = np.linalg.norm(UV, axis=0)
+UV /= UV_norm
 
-  sp = ax.streamplot(X, Y, UV_[0, :], UV_[1, :], color=np.linalg.norm(UV_, axis=0), cmap='viridis', density=0.5, broken_streamlines=True)
-  # ax.streamplot(X, Y, UV_[0, :], UV_[1, :], color=np.linalg.norm(UV_, axis=0), cmap='gray_r') #, color=UV_norm.reshape(X.shape), cmap='gray_r')
+# q = ax.quiver(XY[0, :], XY[1, :], UV[0, :], UV[1, :], UV_norm, cmap='gray_r')
+# plt.colorbar(q, ax=ax)
 
-  sp.lines.set_alpha(0.5)
-  # sp.arrows.set_alpha(0.0)
+sp = ax.streamplot(X, Y, UV_[0, :], UV_[1, :], color='lightgray', density=1.0, linewidth=0.8, broken_streamlines=False)
+# sp = ax.streamplot(X, Y, UV_[0, :], UV_[1, :], color=np.linalg.norm(UV_, axis=0), density=0.5, broken_streamlines=True)
+# ax.streamplot(X, Y, UV_[0, :], UV_[1, :], color=np.linalg.norm(UV_, axis=0), cmap='gray_r') #, color=UV_norm.reshape(X.shape), cmap='gray_r')
 
-  ax.plot(x, ncl[0, :], label='x-nullcline', linestyle='dashed')
-  ax.plot(x, ncl[1, :], label='y-nullcline', linestyle='dashed')
+# sp.lines.set_alpha(0.5)
+# sp.arrows.set_alpha(0.0)
 
-  ax.legend()
-  ax.set_ylim(*ylim)
+ax.plot(x, ncl[0, :], label='Nullcline $x\' = 0$', linestyle='dashed')
+ax.plot(x, ncl[1, :], label='Nullcline $y\' = 0$', linestyle='dashed')
 
+ax.legend()
+ax.set_ylim(*ylim)
+ax.grid()
 
-plt.show()
+ax.set_xlabel('$x$')
+ax.set_ylabel('$y$')
+
+with (config.output_path / 'trajectories.png').open('wb') as file:
+  fig.savefig(file)

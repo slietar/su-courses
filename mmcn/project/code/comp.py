@@ -67,8 +67,45 @@ eigenval1, eigenval2 = iter(jacobian.eigenvals().keys())
 def get_eignvalues(sp: np.ndarray):
   return np.asarray(sympy.lambdify(x, list(jacobian.eigenvals().keys()), 'numpy')(sp[:, 0].astype(complex))).T
 
-# sp = get_stat_points(np.linspace(-0.1, 12, 100))
-# print(get_eignvalues(sp).shape)
+
+format_ex = lambda value: str(value).replace('x', 'v_0').replace('**', '^').replace('*', '')
+format_sols = lambda sols: format_ex(' "ou" '.join([f'x = {sol}' for sol in sols]))
+
+
+# Complex conjugate eigenvalues
+
+complex_eigenval_eq = jacobian.trace() ** 2 - 4 * jacobian.det()
+
+if __name__ == '__main__':
+  print('Condition for complex conjugate eigenvalues:')
+  print(format_ex(sympy.expand(complex_eigenval_eq)) + ' &< 0 \\')
+  print()
+  # print(sympy.solve(complex_eigenval_eq < 0, x))
+  # print(sympy.latex(sympy.solve(Eq(complex_eigenval_eq, 0), x)[0]))
+
+
+# Saddle-node bifurcations
+
+bif1_x = sympy.solve(Eq(jacobian.det(), 0), x)
+
+if __name__ == '__main__':
+  print('Condition for saddle-node bifurcation:')
+  print(format_ex(jacobian.det()) + ' &= 0 \\')
+  print(format_sols(bif1_x))
+  print()
+
+
+# Hopf bifurcations
+
+bif2_x = sympy.solve(Eq(jacobian.trace(), 0))
+
+if __name__ == '__main__':
+  print('Condition for Hopf bifurcation:')
+  print(format_ex(jacobian.trace()) + ' &= 0 \\')
+  print(format_sols(bif2_x))
+
+
+bifurcations_x = np.array([float(x.evalf()) for x in [*bif1_x, *bif2_x]])
 
 
 # Solution boundary test

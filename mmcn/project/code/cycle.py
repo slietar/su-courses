@@ -63,28 +63,36 @@ limit_cycle = smooth(limit_cycle, 9, axis=0)
 # with open('cycle.pkl', 'wb') as file:
 #   pickle.dump(cycle_limits, file)
 
+# print(limit_cycle[0, :])
+
+
+# if __name__ == '__main__':
+#   fig, ax = plt.subplots()
+
+#   # ax.scatter(stat_points[:, 2], cycle_limits[:, 0], label='Min', s=4.0, alpha=0.6)
+#   # ax.scatter(stat_points[:, 2], cycle_limits[:, 1], label='Max', s=4.0, alpha=0.6, color='red')
+#   ax.plot(stat_points_[:, 2], stat_points_[:, 0], '--')
+
+#   ax.plot(stat_points[:, 2], limit_cycle[:, 0])
+#   ax.plot(stat_points[:, 2], limit_cycle[:, 1])
+
+#   ax.grid()
+
+#   plt.show()
+
+
+# if __name__ == '__main_':
+#   fig, ax = plt.subplots()
+
+#   ax.axvline(11.59)
+#   ax.set_yscale('log')
+#   ax.plot(stat_points[:, 2], limit_cycle[:, 1] - limit_cycle[:, 0])
+#   ax.grid()
+
+#   plt.show()
+
 
 if __name__ == '__main__':
-  fig, ax = plt.subplots()
-
-  # ax.scatter(stat_points[:, 2], cycle_limits[:, 0], label='Min', s=4.0, alpha=0.6)
-  # ax.scatter(stat_points[:, 2], cycle_limits[:, 1], label='Max', s=4.0, alpha=0.6, color='red')
-  ax.plot(stat_points_[:, 2], stat_points_[:, 0], '--')
-
-  ax.plot(stat_points[:, 2], limit_cycle[:, 0])
-  ax.plot(stat_points[:, 2], limit_cycle[:, 1])
-
-  ax.grid()
-
-  plt.show()
-
-
-if __name__ == '__main_':
-  fig, ax = plt.subplots()
-
-  ax.axvline(11.59)
-  ax.set_yscale('log')
-  ax.plot(stat_points[:, 2], limit_cycle[:, 1] - limit_cycle[:, 0])
-  ax.grid()
-
-  plt.show()
+  print('Homoclinic connection:')
+  print(f'x={limit_cycle[0, 0]}')
+  print(f'z={stat_points[0, 2]}')

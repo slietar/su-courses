@@ -12,7 +12,7 @@ eig = comp.get_eignvalues(stat_points)
 fig, ax = plt.subplots()
 
 # ax.set_xlim(-0.02, 0.1)
-ax.set_ylim(-2, 2)
+ax.set_ylim(-2.5, 2.5)
 
 ax.axhline(0, alpha=0.5, color='gray', linewidth=0.8)
 
@@ -23,7 +23,12 @@ ax.plot(stat_points[eig_real, 0], eig[eig_real, 1].real, color='C0', path_effect
 ax.plot(stat_points[~eig_real, 0], eig[~eig_real, 0].real, color='C1', label='Valeurs propres complexes conjuguées', path_effects=[withStroke(linewidth=3, foreground='white')])
 ax.grid()
 
-ax.set_xlabel('x')
+utils.draw_circle(ax, [-1.333, 0], label='col-nœud\n$z = 0.19$', position='bottom')
+utils.draw_circle(ax, [0.18, 0], label='Hopf\n$z = -0.93$', position='right')
+utils.draw_circle(ax, [0, 0], label='col-nœud\n$z = -1$', position='left')
+utils.draw_circle(ax, [1.82, 0], label='Hopf\n$z = 11.59$', position='bottom')
+
+ax.set_xlabel('$x$')
 ax.set_ylabel('Composante réelle des valeurs propres')
 
 ax.legend()
