@@ -5,7 +5,7 @@ import pandas as pd
 from . import data, shared, utils
 
 
-@utils.cache
+@utils.cache()
 def compute_plddt():
   series = dict[str, pd.Series]()
 

@@ -1,15 +1,16 @@
-from matplotlib.colors import LogNorm
 import pandas as pd
 from matplotlib import pyplot as plt
+from matplotlib.colors import LogNorm
 
 from .. import shared
 from ..cv import cv
+from ..dssp import dssp
 from ..gemme import gemme_mean
 from ..pae import pae_mean_by_position
 from ..plddt import plddt
-from ..rmsf import rmsf_by_position
 from ..polymorphism import polymorphism_score
-from ..dssp import dssp
+from ..rmsf import rmsf_by_position
+from ..sasa import sasa
 from .utils import ProteinMap, set_colobar_label
 
 
@@ -22,6 +23,13 @@ map = ProteinMap(ax)
 
 im_dssp = map.plot_dataframe(
   dssp.ss_contextualized.rename('Secondary structure')
+)
+
+
+# SASA
+
+im_sasa = map.plot_dataframe(
+  -sasa.total.rename('Total SASA')
 )
 
 

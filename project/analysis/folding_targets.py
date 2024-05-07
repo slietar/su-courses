@@ -47,5 +47,7 @@ __all__ = [
 
 
 if __name__ == '__main__':
+  print(target_domains)
+
   with (shared.root_path / 'output/target_sequences.json').open('w') as file:
     json.dump(target_sequences, file)

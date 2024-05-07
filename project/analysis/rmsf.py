@@ -96,7 +96,7 @@ def get_aligned_residue_coords(domain_kind: str, *, mode: Literal['ca', 'mean'] 
   return all_residue_rmsf, rmsf_by_position
 
 
-@utils.cache
+@utils.cache()
 def compute_rmsf():
   result = { domain_kind: get_aligned_residue_coords(domain_kind) for domain_kind in data.domain_kinds }
   rmsf_arr_by_domain_kind = { domain_kind: rmsf_arr for domain_kind, (rmsf_arr, _) in result.items() }
@@ -111,3 +111,7 @@ __all__ = [
   'rmsf_arr_by_domain_kind',
   'rmsf_by_position'
 ]
+
+
+if __name__ == '__main__':
+  print(rmsf_by_position)

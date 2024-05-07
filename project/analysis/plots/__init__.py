@@ -2,9 +2,9 @@ from matplotlib import pyplot as plt
 from matplotlib.rcsetup import cycler
 
 
-plt.rcParams['font.family'] = 'Helvetica Now Display'
-plt.rcParams['mathtext.fontset'] = 'custom'
-plt.rcParams['mathtext.sf'] = 'Helvetica'
+plt.rcParams['font.family'] = 'Helvetica Neue'
+plt.rcParams['mathtext.fontset'] = 'cm'
+# plt.rcParams['mathtext.sf'] = 'Helvetica Neue'
 plt.rcParams['font.size'] = 11.0
 plt.rcParams['figure.dpi'] = 288
 plt.rcParams['grid.color'] = 'whitesmoke'

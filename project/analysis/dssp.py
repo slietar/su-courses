@@ -39,7 +39,7 @@ def read_pdbtext_with_checking(pdbstring: str):
     return coords
 
 
-@utils.cache
+@utils.cache()
 def compute_dssp():
   ss_contextualized = list[int]()
   ss_pruned = list[int]()

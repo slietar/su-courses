@@ -7,7 +7,7 @@ from . import data, shared, utils
 from .folding_targets import target_domains
 
 
-@utils.cache
+@utils.cache()
 def compute_pae():
   def get_domain_pae(domain_index: int):
     with (shared.root_path / f'sources/alphafold-contextualized/{domain_index:04}/main_scores_rank_001_alphafold2_ptm_model_1_seed_000.json').open() as file:

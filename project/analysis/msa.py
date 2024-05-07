@@ -31,7 +31,7 @@ def process_domain_kind(domain_kind: str):
 
   return msa
 
-@utils.cache
+@utils.cache()
 def compute_msa():
   return { domain_kind: process_domain_kind(domain_kind) for domain_kind in data.domain_kinds }
 
