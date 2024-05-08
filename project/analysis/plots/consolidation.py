@@ -92,9 +92,7 @@ im_pae = map.plot_dataframe(
 # Polymorphism score
 
 im_poly = map.plot_dataframe(
-  polymorphism_score.rename('Polymorphism score'), # + 1,
-  vmax=1000
-  # norm=LogNorm()
+  polymorphism_score.rename('Polymorphism score')
 )
 
 # cbar = fig.colorbar(im_poly, ax=ax, pad=0.0)

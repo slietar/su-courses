@@ -6,7 +6,7 @@ from .. import shared, utils
 
 # SecondaryStructureDtype = pd.CategoricalDtype(['helix', 'loop', 'strand'], ordered=True)
 
-@utils.cache
+@utils.cache()
 def compute_consolidated_residues():
   from .. import data
   from ..cv import cv
@@ -14,8 +14,9 @@ def compute_consolidated_residues():
   from ..gemme import gemme_mean
   from ..pae import pae_mean_by_position
   from ..plddt import plddt
-  from ..rmsf import rmsf_by_position
   from ..polymorphism import polymorphism_score
+  from ..rmsf import rmsf_by_position
+  from ..sasa import sasa
 
 
   def get_domains():
@@ -27,7 +28,6 @@ def compute_consolidated_residues():
       positions += range(domain.start_position, domain.end_position + 1)
 
     return pd.Series(domains, index=positions, name='domain')
-    # return pd.get_dummies(series, prefix='domain')
 
   phenotypes = (data.mutations.loc[:, [
     'effect_cardio',
@@ -51,14 +51,18 @@ def compute_consolidated_residues():
     # dssp.ss_contextualized.astype('category').reindex(data.position_index).rename('dssp'),
     gemme_mean,
     rmsf_by_position,
-    (polymorphism_score + 1).apply(np.log)
+    sasa.total.rename('sasa'),
+    (polymorphism_score + 1).apply(np.log),
+    # pd.get_dummies(dssp.ss_contextualized, prefix='dssp').reindex(data.position_index, fill_value=False),
   ], axis='columns').dropna()
 
   classification_descriptors = pd.concat([
     plddt.alphafold_pruned.rename('plddt'),
     pae_mean_by_position,
-    get_domains(),
-    dssp.ss_contextualized.rename('dssp')
+    # get_domains(),
+    # get_domains().astype('category'),
+    # pd.get_dummies(get_domains(), prefix='domain'),
+    # dssp.ss_contextualized.rename('dssp')
   ], axis='columns').dropna()
 
   return native_descriptors, classification_descriptors, phenotypes
