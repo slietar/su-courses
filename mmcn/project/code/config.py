@@ -4,8 +4,8 @@ from matplotlib.rcsetup import cycler
 
 
 plt.rcParams['font.family'] = 'Linux Libertine'
-plt.rcParams['mathtext.fontset'] = 'custom'
-plt.rcParams['mathtext.sf'] = 'Helvetica'
+plt.rcParams['mathtext.fontset'] = 'cm'
+# plt.rcParams['mathtext.sf'] = 'Helvetica'
 plt.rcParams['figure.figsize'] = 21.0 / 2.54 - 2.0, 4.0
 plt.rcParams['font.size'] = 11.0
 plt.rcParams['figure.dpi'] = 288
@@ -25,7 +25,6 @@ plt.rcParams['legend.framealpha'] = 1.0
 plt.rcParams['legend.loc'] = 'upper right'
 plt.rcParams['legend.fancybox'] = False
 plt.rcParams['legend.edgecolor'] = 'k'
-plt.rcParams['mathtext.fontset'] = 'cm'
 
 
 output_path = Path('output')
