@@ -11,6 +11,7 @@ def compute_plddt():
 
   for name, kind in [
     ('alphafold-global', 'global'),
+    ('alphafold3-global', 'global'),
     ('alphafold-pruned', 'pruned'),
     ('esmfold-pruned', 'pruned'),
     ('esmfold-isolated', 'isolated'),

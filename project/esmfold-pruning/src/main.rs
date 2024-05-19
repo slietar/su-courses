@@ -32,6 +32,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             name: "alphafold-global",
         },
         Spec {
+            input_path: "../sources/alphafold3-global/fold_fbn1_model_0.cif",
+            kind: SpecKind::Global,
+            name: "alphafold3-global",
+        },
+        Spec {
             input_path: "../sources/esmfold-contextualized/domains/{}.pdb",
             kind: SpecKind::Contextualized {
                 pruned_name: "esmfold-pruned",
