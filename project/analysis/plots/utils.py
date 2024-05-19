@@ -1,6 +1,8 @@
 from matplotlib import patches
 from matplotlib.axes import Axes
 from matplotlib.colorbar import Colorbar
+from matplotlib.figure import Figure
+from matplotlib.image import AxesImage
 from matplotlib.transforms import IdentityTransform, Transform
 import numpy as np
 import pandas as pd
@@ -29,8 +31,6 @@ def highlight_domains(ax: Axes, y: float):
     'EGFCB': 'g',
     'TB': 'b'
   }
-
-  domain_row_height = 0.2
 
   ax_transform = ax.transData + ax.figure.dpi_scale_trans.inverted()
   ax_transform_lin = get_transform_linear_component(ax_transform)
@@ -85,12 +85,26 @@ def set_colobar_label(cbar: Colorbar, label: str):
   cbar.ax.set_ylabel(label, rotation=270)
 
 
+# In inches
+domain_row_height = 0.1
+data_row_height = 0.5
+xaxis_height = 0.2
+
 class ProteinMap:
   def __init__(self, ax: Axes, protein_length: int = data.protein_length):
     self.ax = ax
     self.protein_length = protein_length
+
+    self.colorbars = list[tuple[AxesImage, str, dict]]()
     self.ylabels = list[str]()
 
+  @property
+  def figure(self):
+    assert isinstance(self.ax.figure, Figure)
+    return self.ax.figure
+
+  def add_colorbar(self, im: AxesImage, /, label: str, **kwargs):
+    self.colorbars.append((im, label, kwargs))
 
   def plot_dataframe(self, df_like: pd.DataFrame | pd.Series, /, **kwargs):
     df = df_like if isinstance(df_like, pd.DataFrame) else df_like.to_frame()
@@ -112,4 +126,59 @@ class ProteinMap:
       ticks=(-np.arange(len(self.ylabels)) - 0.5)
     )
 
-    highlight_domains(self.ax, 0)
+    total_height = domain_row_height + len(self.ylabels) * data_row_height + xaxis_height
+    self.figure.set_figheight(total_height)
+
+    self.figure.subplots_adjust(
+      top=(1.0 - domain_row_height / total_height),
+      bottom=(xaxis_height / total_height),
+      right=1.0
+    )
+
+
+    # Add color bars
+
+    inch_size = get_transform_linear_component(self.figure.dpi_scale_trans + self.figure.transFigure.inverted())
+
+    for im, label, kwargs in self.colorbars:
+      cbar = self.figure.colorbar(im, ax=self.ax, fraction=(0.6 * inch_size[0]), pad=(0.2 * inch_size[0]), **kwargs)
+      set_colobar_label(cbar, label)
+
+
+    # Add domains
+
+    colors = {
+      'EGF': 'r',
+      'EGFCB': 'g',
+      'TB': 'b'
+    }
+
+    ax_transform = self.ax.transData + self.figure.dpi_scale_trans.inverted()
+    ax_transform_lin = get_transform_linear_component(ax_transform)
+
+    for domain in data.domains.itertuples():
+      rect = patches.Rectangle(
+        ax_transform.transform((domain.start_position - 0.5, 0)),
+        ax_transform_lin[0] * (domain.end_position - domain.start_position + 1),
+        domain_row_height,
+        alpha=0.5,
+        clip_on=False,
+        edgecolor='white',
+        facecolor=colors[domain.kind],
+        linewidth=1,
+        transform=self.figure.dpi_scale_trans
+      )
+
+      self.ax.add_artist(rect)
+
+    for domain in data.domains.itertuples():
+      self.ax.text(
+        *(ax_transform.transform(((domain.start_position + domain.end_position) * 0.5, 0)) + [0, domain_row_height * 0.5]),
+        str(domain.number),
+        clip_on=False,
+        color='white',
+        fontsize=4,
+        ha='center',
+        transform=self.figure.dpi_scale_trans,
+        va='center'
+      )
