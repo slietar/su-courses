@@ -1,14 +1,17 @@
-from matplotlib import pyplot as plt
-
 from .. import shared
 from ..plddt import plddt
-from .utils import ProteinMap, get_transform_linear_component, set_colobar_label
+from .utils import ProteinMap
 
 
-fig, ax = plt.subplots()
+map = ProteinMap(6, max_row_length=3)
 
-map = ProteinMap(ax)
-im = map.plot_dataframe(
+# map.plot_dataframe(
+#   pd.Series([1, 2, 3, 4], index=pd.Series([2, 3, 4, 5], name='position'), name='foo'),
+#   label='Aaa'
+# )
+
+map = ProteinMap()
+map.plot_dataframe(
   plddt.loc[:, ['alphafold_global', 'alphafold3_global', 'alphafold_pruned']].rename(columns=dict(
     alphafold_global='AlphaFold 2\n(protéine entière)',
     alphafold3_global='AlphaFold 3\n(protéine entière)',
@@ -16,10 +19,9 @@ im = map.plot_dataframe(
     # esmfold_pruned='ESMFold per domain with context',
     # esmfold_isolated='ESMFold per domain without context'
   )
-), vmin=0.0, vmax=100.0)
+), label='pLDDT', vmin=0.0, vmax=100.0)
 
-map.add_colorbar(im, 'pLDDT')
 map.finish()
 
 with (shared.output_path / 'plddt.png').open('wb') as file:
-  fig.savefig(file)
+  map.fig.savefig(file)
