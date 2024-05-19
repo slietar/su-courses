@@ -3,34 +3,9 @@ from typing import IO, Literal
 import numpy as np
 import pandas as pd
 
-from . import data, shared, utils
+from . import data, pdb, shared, utils
 from .msa import msa
 from .pymol import PymolTransformation
-
-
-def parse_pdb_atoms(file: IO[str], /):
-  def process_line(line: str):
-    return [item for item in [
-      int(line[6:11]),
-      line[12:16].strip(),
-      line[16].strip(),
-      line[17:20].strip(),
-      line[21],
-      int(line[22:26]),
-      line[26].strip(),
-      float(line[30:38]),
-      float(line[38:46]),
-      float(line[46:54]),
-      float(line[54:60]),
-      float(line[60:66]),
-      line[72:76].strip(),
-      line[76:78].strip(),
-      line[78:80].strip()
-    ]]
-
-  lines = (process_line(line) for line in file.readlines() if line.startswith('ATOM'))
-
-  return pd.DataFrame(lines, columns=['atom_serial_number', 'atom_name', 'alt_loc_ind', 'residue_name', 'chain_id', 'residue_seq_number', 'code', 'x', 'y', 'z', 'occupancy', 'temp_factor', 'segment_id', 'element_symbol', 'charge'])
 
 
 def get_aligned_residue_coords(domain_kind: str, *, mode: Literal['ca', 'mean'] = 'mean'):
@@ -64,7 +39,7 @@ def get_aligned_residue_coords(domain_kind: str, *, mode: Literal['ca', 'mean'] 
     # Get atom positions
 
     with path.open() as file:
-      atoms = parse_pdb_atoms(file)
+      atoms = pdb.load(file)
 
     first_residue_seq_number = atoms.residue_seq_number.min()
 
