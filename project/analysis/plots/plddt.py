@@ -3,7 +3,7 @@ from ..plddt import plddt
 from .utils import ProteinMap
 
 
-map = ProteinMap(6, max_row_length=3)
+# map = ProteinMap(6, max_ax_length=3)
 
 # map.plot_dataframe(
 #   pd.Series([1, 2, 3, 4], index=pd.Series([2, 3, 4, 5], name='position'), name='foo'),

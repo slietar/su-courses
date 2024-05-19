@@ -30,16 +30,17 @@ data_row_height = 0.5
 xaxis_height = 0.2
 
 class ProteinMap:
-  def __init__(self, length: int = data.protein_length, max_row_length: int = 2000):
-    self.ax_count = math.ceil(length / max_row_length)
-    ax_length = math.ceil(length / self.ax_count)
+  def __init__(self, map_range: tuple[int, int] = (1, data.protein_length), *, max_ax_length: int = 2000):
+    length = map_range[1] - map_range[0] + 1
+    ax_count = math.ceil(length / max_ax_length)
+    ax_length = math.ceil(length / ax_count)
 
     self.ax_bounds = [(
-      ax_index * ax_length + 1,
-      min((ax_index + 1) * ax_length, length)
-    ) for ax_index in range(self.ax_count)]
+      map_range[0] + ax_index * ax_length + 1,
+      min(map_range[0] + (ax_index + 1) * ax_length, map_range[1])
+    ) for ax_index in range(ax_count)]
 
-    self.fig, axs = plt.subplots(self.ax_count, 1, squeeze=False)
+    self.fig, axs = plt.subplots(ax_count, 1, squeeze=False)
     self.axs = list[Axes](axs.flat)
     self.length = length
 
@@ -53,18 +54,17 @@ class ProteinMap:
     df = df_like if isinstance(df_like, pd.DataFrame) else df_like.to_frame()
     df_reindexed = df.reindex(index=data.position_index, fill_value=np.nan)
 
-    updated_kwargs = kwargs.copy()
+    updated_kwargs: dict = dict(cmap='plasma') | kwargs
 
     if not 'vmin' in updated_kwargs:
-      updated_kwargs['vmin'] = df.min()
+      updated_kwargs['vmin'] = df.min().min()
     if not 'vmax' in updated_kwargs:
-      updated_kwargs['vmax'] = df.max()
+      updated_kwargs['vmax'] = df.max().max()
 
     for ax, (ax_start, ax_end) in zip(self.axs, self.ax_bounds):
       im = ax.imshow(
         df_reindexed.loc[ax_start:ax_end].to_numpy(dtype=float, na_value=np.nan).T,
         aspect='auto',
-        cmap='plasma',
         extent=((ax_start - 0.5, ax_end + 0.5, -len(self.ylabels) - len(df.columns), -len(self.ylabels))),
         interpolation='none',
         **updated_kwargs
@@ -90,8 +90,9 @@ class ProteinMap:
         ticks=(-np.arange(len(self.ylabels)) - 0.5)
       )
 
+    ax_count = len(self.axs)
     ax_height = (len(self.ylabels) * data_row_height + xaxis_height)
-    total_height = (domain_row_height + ax_height) * self.ax_count + ax_gap * (self.ax_count - 1)
+    total_height = (domain_row_height + ax_height) * ax_count + ax_gap * (ax_count - 1)
     self.fig.set_figheight(total_height)
 
     self.fig.subplots_adjust(
