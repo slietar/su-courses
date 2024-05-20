@@ -40,10 +40,16 @@ def compute_gemme():
   with (shared.root_path / 'sources/gemme_orthologs.txt').open() as file:
     gemme_orthologs = load_gemme(file)
 
-  return gemme_all, gemme_orthologs
+  def get_mutations_gemme(mutations: pd.DataFrame, /):
+    return pd.concat([
+      mutations.apply(lambda mutation: gemme_all.dataframe.at[mutation.position, mutation.alternate_aa], axis='columns').rename('gemme_all'),
+      mutations.apply(lambda mutation: gemme_orthologs.dataframe.at[mutation.position, mutation.alternate_aa], axis='columns').rename('gemme_orthologs')
+    ], axis='columns')
+
+  return gemme_all, gemme_orthologs, get_mutations_gemme(data.mutations), get_mutations_gemme(data.variants)
 
 
-gemme_all, gemme_orthologs = compute_gemme()
+gemme_all, gemme_orthologs, gemme_mutations, gemme_variants = compute_gemme()
 
 # Deprecated
 gemme = gemme_all.dataframe

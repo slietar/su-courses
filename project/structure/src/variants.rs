@@ -193,20 +193,18 @@ pub fn process_variants(path: &str) -> Result<VariantData, Box<dyn Error>> {
 
             let pathogenicity = match raw_variant.clinical_effect {
                 Some(RawClinicalEffect::Benign)
-                    => Some(7),
-                Some(RawClinicalEffect::BenignLikelyBenign)
-                    => Some(6),
-                Some(RawClinicalEffect::LikelyBenign)
-                    => Some(5),
-                Some(RawClinicalEffect::Conflicting)
-                    => Some(4),
-                Some(RawClinicalEffect::LikelyPathogenic)
-                    => Some(3),
-                Some(RawClinicalEffect::PathogenicLikelyPathogenic)
-                    => Some(2),
-                Some(RawClinicalEffect::Pathogenic)
                     => Some(1),
-                Some(RawClinicalEffect::Uncertain) | None
+                Some(RawClinicalEffect::BenignLikelyBenign)
+                    => Some(2),
+                Some(RawClinicalEffect::LikelyBenign)
+                    => Some(3),
+                Some(RawClinicalEffect::LikelyPathogenic)
+                    => Some(4),
+                Some(RawClinicalEffect::PathogenicLikelyPathogenic)
+                    => Some(5),
+                Some(RawClinicalEffect::Pathogenic)
+                    => Some(6),
+                Some(RawClinicalEffect::Conflicting) | Some(RawClinicalEffect::Uncertain) | None
                     => Some(0),
             };
 
@@ -230,14 +228,13 @@ pub fn process_variants(path: &str) -> Result<VariantData, Box<dyn Error>> {
 
     Ok(VariantData {
         pathogenicity_labels: [
-            "Uncertain significance",
-            "Pathogenic",
-            "Pathogenic/Likely pathogenic",
-            "Likely pathogenic",
-            "Conflicting interpretations of pathogenicity",
-            "Benign/Likely benign",
-            "Likely benign",
+            "Uncertain or conflicting significance",
             "Benign",
+            "Likely benign",
+            "Benign/Likely benign",
+            "Likely pathogenic",
+            "Pathogenic/Likely pathogenic",
+            "Pathogenic",
         ].to_vec(),
         variants,
     })

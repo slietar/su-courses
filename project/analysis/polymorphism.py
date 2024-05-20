@@ -10,7 +10,7 @@ from . import data, utils
 @utils.cache()
 def compute_polymorphism():
   def map_variants(variants: pd.DataFrame):
-    drop_levels = [1, 2, 3]
+    drop_levels = [4, 5, 6]
     mask = ~functools.reduce(operator.or_, (variants.pathogenicity == i for i in drop_levels)).any()
 
     return (variants.allele_count * mask).sum()
