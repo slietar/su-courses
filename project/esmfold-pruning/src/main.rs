@@ -56,6 +56,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             name: "alphafold-contextualized",
         },
     ] {
+        eprintln!("Processing {}", spec.name);
+
         let output_dir_path = root_output_path.join(spec.name);
         std::fs::create_dir_all(&output_dir_path)?;
 
@@ -102,26 +104,36 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                         continue;
                     }
 
-                    let (input_pdb, _) = pdbtbx::open(
+                    let (mut input_pdb, _) = pdbtbx::open(
                         &input_path,
                         pdbtbx::StrictnessLevel::Medium,
                     ).or_else(|_| Err("Failed to load PDB"))?;
 
+                    let input_model = input_pdb.model_mut(0).ok_or("Failed to get model")?;
+                    let input_chain = input_model.chain_mut(0).ok_or("Failed to get chain")?;
+
+                    let input_pdb_start_position = if domain_index > 0 {
+                        data.domains[domain_index - 1].start_position
+                    } else {
+                        1
+                    };
+
+                    for (residue_rel_index, residue) in input_chain.residues_mut().enumerate() {
+                        residue.set_serial_number((input_pdb_start_position + residue_rel_index) as isize);
+                    }
+
                     if let Some(pruned_info) = &mut pruned_info {
-                        let input_model = input_pdb.model(0).ok_or("Failed to get model")?;
-                        let chain = input_model.chain(0).ok_or("Failed to get chain")?;
+                        let new_residues = input_chain.residues().skip(domain.start_position - input_pdb_start_position).take(domain.end_position - domain.start_position + 1).cloned().collect::<Vec<_>>();
 
-                        let offset = domain.start_position - (if domain_index > 0 {
-                            data.domains[domain_index - 1].start_position
-                        } else {
-                            1
-                        });
+                        pruned_info.plddt.push(get_plddt(new_residues.iter())?);
 
-                        let residues = chain.residues().skip(offset).take(domain.end_position - domain.start_position + 1).cloned().collect::<Vec<_>>();
+                        // let new_residues = input_residues.iter().enumerate().map(|(residue_rel_index, input_residue)| {
+                        //     let mut residue = input_residue.clone();
+                        //     residue.set_serial_number((domain.start_position + residue_rel_index) as isize);
+                        //     residue
+                        // });
 
-                        pruned_info.plddt.push(get_plddt(residues.iter())?);
-
-                        let new_chain = Chain::from_iter("A", residues.into_iter()).ok_or("Failed to create chain")?;
+                        let new_chain = Chain::from_iter("A", new_residues.into_iter()).ok_or("Failed to create chain")?;
 
                         let mut output_pdb = pdbtbx::PDB::new();
                         let output_model = pdbtbx::Model::from_iter(0, [new_chain].into_iter());
