@@ -33,6 +33,54 @@ struct RawVariant {
 
     #[serde(rename = "Alternate")]
     alternate_nucleotides: String,
+
+    #[serde(rename = "VEP Annotation")]
+    annotation: VariantAnnotation,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+enum VariantAnnotation {
+    #[serde(rename = "frameshift_variant")]
+    Frameshift,
+
+    #[serde(rename = "inframe_deletion")]
+    InframeDeletion,
+
+    #[serde(rename = "inframe_insertion")]
+    InframeInsertion,
+
+    #[serde(rename = "intron_variant")]
+    Intron,
+
+    #[serde(rename = "missense_variant")]
+    Missense,
+
+    #[serde(rename = "stop_gained")]
+    StopGained,
+
+    #[serde(rename = "stop_lost")]
+    StopLost,
+
+    #[serde(rename = "stop_retained_variant")]
+    StopRetained,
+
+    #[serde(rename = "splice_region_variant")]
+    SpliceRegion,
+
+    #[serde(rename = "splice_acceptor_variant")]
+    SpliceAcceptor,
+
+    #[serde(rename = "splice_donor_variant")]
+    SpliceDonor,
+
+    #[serde(rename = "synonymous_variant")]
+    Synonymous,
+
+    #[serde(rename = "3_prime_UTR_variant")]
+    UTR3Prime,
+
+    #[serde(rename = "5_prime_UTR_variant")]
+    UTR5Prime,
 }
 
 #[derive(Debug, Deserialize)]
@@ -67,6 +115,7 @@ enum RawClinicalEffect {
 #[derive(Debug, Deserialize, Serialize)]
 pub struct Variant {
     allele_count: usize,
+    annotation: VariantAnnotation,
     frequency: f32,
     genomic_position: usize,
     name: String,
@@ -165,6 +214,7 @@ pub fn process_variants(path: &str) -> Result<VariantData, Box<dyn Error>> {
                 allele_count: raw_variant.allele_count,
                 alternate_aa: alternate_residue,
                 alternate_nucleotides: raw_variant.alternate_nucleotides,
+                annotation: raw_variant.annotation,
                 frequency: raw_variant.frequency,
                 genomic_position: raw_variant.absolute_genomic_position - 48410990 + 8613,
                 name: raw_variant.name,
