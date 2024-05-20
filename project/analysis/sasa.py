@@ -9,20 +9,20 @@ from .folding_targets import target_domains
 def compute_sasa():
   records = list()
 
-  for domain in data.domains.join(target_domains).itertuples():
+  for domain in data.domains.itertuples():
     structure = freesasa.Structure(str(shared.root_path / f'output/structures/alphafold-contextualized/{domain.global_index:04}.pdb'))
     result = freesasa.calc(structure)
 
     # area.residueNumber starts at 1
     records += [dict(
-      position=(domain.start_position + rel_position - domain.rel_start_position),
+      position=position,
 
       apolar=area.relativeApolar,
       main_chain=area.relativeMainChain,
       polar=area.relativePolar,
       side_chain=area.relativeSideChain,
       total=area.relativeTotal,
-    ) for area in result.residueAreas()['A'].values() if domain.rel_start_position <= (rel_position := int(area.residueNumber)) <= domain.rel_end_position]
+    ) for area in result.residueAreas()['A'].values() if domain.start_position <= (position := int(area.residueNumber)) <= domain.end_position]
 
 
   return pd.DataFrame.from_records(records, index='position')
