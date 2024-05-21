@@ -2,23 +2,20 @@ from matplotlib import pyplot as plt
 
 from .. import shared
 from ..pae import pae_mean_by_position
-from .utils import ProteinMap, set_colobar_label
+from .utils import ProteinMap
 
 
-fig, ax = plt.subplots(figsize=(25, 8))
-
-map = ProteinMap(ax)
+map = ProteinMap()
 im = map.plot_dataframe(
   pae_mean_by_position.rename(columns=dict(
-    pae_inter='Mean over residues of neighboring domains',
-    pae_intra='Mean over residues of the domain itself'
-  ))
+    pae_inter='Moyenne sur les\nrésidus des\ndomaines adjacents',
+    pae_intra='Moyenne sur les\nrésidus du domaine'
+  )),
+  label='PAE (Å)',
+  vmin=0.0
 )
 map.finish()
 
-cbar = fig.colorbar(im, ax=ax)
-set_colobar_label(cbar, 'PAE')
-
 
 with (shared.output_path / 'pae.png').open('wb') as file:
-  fig.savefig(file)
+  map.fig.savefig(file)

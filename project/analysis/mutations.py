@@ -15,7 +15,7 @@ mutation_effects = data.mutations.loc[:, [
   'effect_sk'
 ]]
 
-mutation_pathogenic = (mutation_effects > 0).sum(axis='columns') >= 2
+mutation_pathogenic = ((mutation_effects == True) | (mutation_effects == 2)).sum(axis='columns') > 0
 
 mutation_consequences = pd.concat([
   mutation_pathogenic.rename('pathogenic'),
@@ -27,8 +27,8 @@ def map_mutation_group(group: pd.DataFrame, /):
   return pd.Series(dict(
     gemme_all=group.gemme_all.min(),
     gemme_orthologs=group.gemme_orthologs.min(),
-    pathogenic=group.pathogenic.max(),
-    severe=group.severe.max()
+    pathogenic=group.pathogenic.any(),
+    severe=group.severe.any()
   ))
 
 known_mutation_info = mutation_consequences.join(data.mutations.position).join(gemme_mutations).groupby('position').apply(map_mutation_group)

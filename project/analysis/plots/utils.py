@@ -92,13 +92,14 @@ class ProteinMap:
 
     ax_count = len(self.axs)
     ax_height = (len(self.ylabels) * data_row_height + xaxis_height)
-    total_height = (domain_row_height + ax_height) * ax_count + ax_gap * (ax_count - 1)
+    legend_height = 0.25
+    total_height = legend_height + (domain_row_height + ax_height) * ax_count + ax_gap * (ax_count - 1)
     self.fig.set_figheight(total_height)
 
     self.fig.subplots_adjust(
-      top=(1.0 - domain_row_height / total_height),
+      top=(1.0 - (domain_row_height + legend_height) / total_height),
       bottom=(xaxis_height / total_height),
-      right=1.0,
+      right=(1.0 if self.colorbars else 0.98),
       hspace=((domain_row_height + ax_gap + xaxis_height) / ax_height)
     )
 
@@ -124,9 +125,9 @@ class ProteinMap:
     # Add domains
 
     colors = {
-      'EGF': 'r',
-      'EGFCB': 'g',
-      'TB': 'b'
+      'EGF': 'C0',
+      'EGFCB': 'C1',
+      'TB': 'C2'
     }
 
     for ax, (ax_start, ax_end) in zip(self.axs, self.ax_bounds):
@@ -147,7 +148,6 @@ class ProteinMap:
           ax_transform.transform((start_position - 0.5, 0)),
           ax_transform_lin[0] * (end_position - start_position + 1),
           domain_row_height,
-          alpha=0.5,
           clip_on=False,
           edgecolor='white',
           facecolor=colors[domain.kind],
@@ -167,3 +167,9 @@ class ProteinMap:
           transform=self.fig.dpi_scale_trans,
           va='center'
         )
+
+    self.fig.legend(
+      handles=[patches.Patch(color=color, label=label) for label, color in colors.items()],
+      loc='upper right',
+      ncol=len(colors)
+    )
