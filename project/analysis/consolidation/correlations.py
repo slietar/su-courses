@@ -3,20 +3,11 @@ from matplotlib.patheffects import withStroke
 import numpy as np
 
 from .. import shared
-from .residues import native_descriptors
+from .residues import descriptor_names, native_descriptors
 from ..plots import utils
 
 
-df = native_descriptors.rename(columns=dict(
-  cv_10='Variance circulaire\n(seuil 10 Å)',
-  cv_20='Variance circulaire\n(seuil 20 Å)',
-  gemme_all='GEMME moyen',
-  gemme_orthologs='GEMME moyen\n(orthologues)',
-  rmsf='Flexibilité',
-  plddt='pLDDT',
-  sasa='SASA',
-  polymorphism='Polymorphisme'
-))
+df = native_descriptors.rename(columns=descriptor_names)
 
 fig, ax = plt.subplots()
 fig.subplots_adjust(
