@@ -13,6 +13,7 @@ training_df = native_descriptors
 phenotypes_df = phenotypes.loc[training_df.index]
 # training_df = native_descriptors[phenotypes.loc[native_descriptors.index].any(axis='columns')]
 pathogenic = phenotypes_df.any(axis='columns')
+# phenotypes_df = phenotypes_df[mask]
 
 model = PCA(n_components=3)
 pc = model.fit_transform(scale(training_df))
@@ -24,7 +25,7 @@ for pc_index, (pc_name, row) in enumerate(comp.iterrows()):
   print(f'  Explained variance ratio: {(model.explained_variance_ratio_[pc_index] * 100):.2f}%')
   print(f'  Most significant features:')
 
-  for feature_name, value in row.sort_values(ascending=False, key=abs)[:5].items():
+  for feature_name, value in row.sort_values(ascending=False, key=abs)[:10].items():
     print(f'    {feature_name.ljust(16)} {value:+.4f}')
 
   print()

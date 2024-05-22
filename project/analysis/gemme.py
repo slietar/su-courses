@@ -39,6 +39,8 @@ def compute_gemme():
 
   with (shared.root_path / 'sources/gemme_orthologs.txt').open() as file:
     gemme_orthologs = load_gemme(file)
+    # gemme_orthologs.array = gemme_all.array - gemme_orthologs.array
+    # gemme_orthologs.dataframe = gemme_all.dataframe - gemme_orthologs.dataframe
 
   def get_mutations_gemme(mutations: pd.DataFrame, /):
     return pd.concat([

@@ -1,5 +1,6 @@
 from matplotlib import pyplot as plt
 from matplotlib.axes import Axes
+import numpy as np
 import pandas as pd
 from sklearn.decomposition import PCA
 from sklearn.preprocessing import scale
@@ -9,10 +10,10 @@ from .residues import classification_descriptors, descriptor_names, native_descr
 from ..mutations import all_mutation_info
 
 
-full_df = native_descriptors.join(all_mutation_info.drop(['pathogenic', 'severe'], axis='columns').rename(columns=dict(
-  gemme_all='gemme_all_mut',
-  gemme_orthologs='gemme_orthologs_mut'
-)))
+# full_df = native_descriptors.join(all_mutation_info.drop(['pathogenic', 'severe'], axis='columns').rename(columns=dict(
+#   gemme_all='gemme_all_mut',
+#   gemme_orthologs='gemme_orthologs_mut'
+# )))
 
 full_df = native_descriptors
 
@@ -22,10 +23,11 @@ full_df = native_descriptors
 scatter_fig = plt.figure()
 scatter_fig.set_figheight(4.5)
 scatter_fig.subplots_adjust(
-  bottom=0.07,
-  left=0.05,
-  right=0.95,
-  top=0.93
+  bottom=0.10,
+  left=0.08,
+  right=0.92,
+  top=0.90,
+  hspace=0.3
 )
 
 bar_fig, bar_axs = plt.subplots(ncols=2, nrows=len(data.domain_kinds), sharex=True, sharey=True)
@@ -46,25 +48,37 @@ for domain_kind_index, domain_kind in enumerate(data.domain_kinds):
   target_df = full_df[target_residues_mask.reindex(full_df.index)]
   training_df = full_df[training_residues_mask.reindex(full_df.index)].rename(columns=descriptor_names)
 
+  # print(domain_kind, np.unique(training_residues_mask, return_counts=True))
+
   # print(target_df)
 
-  model = PCA(n_components=3)
+  model = PCA(n_components=5)
   pc_training = model.fit_transform(scale(training_df))
 
   # scale(target_df) model.components_
   # print(target_df.to_numpy().shape, model.components_.shape)
 
-  pc = target_df.to_numpy() @ model.components_.T
+  pc = scale(target_df) @ model.components_.T
+  pathogenic_mask = all_mutation_info.pathogenic.reindex(target_df.index)
 
   components = pd.DataFrame(model.components_, columns=training_df.columns, index=[f'PC{pc_index + 1}' for pc_index in range(model.components_.shape[0])])
 
   # ax.scatter(pc_training[:, 0], pc_training[:, 1], cmap='RdYlBu', s=1.0)
-  ax.scatter(pc[:, 0], pc[:, 1], c=training_residues_mask.reindex(target_df.index), cmap='rainbow', s=0.5)
+  # ax.scatter(pc[:, 0], pc[:, 1], c=training_residues_mask.reindex(target_df.index), cmap='rainbow', s=0.5)
+  ax.scatter(pc[:, 0][~pathogenic_mask], pc[:, 1][~pathogenic_mask], color='C0', marker='.', s=1.0, alpha=0.4, label=('Résidu non pathogène' if domain_kind_index == 0 else None))
+  ax.scatter(pc[:, 0][pathogenic_mask], pc[:, 1][pathogenic_mask], color='C1', marker='.', s=1.0, label=('Résidu pathogène' if domain_kind_index == 0 else None))
+
   ax.set_title(f'Domaines de type {domain_kind}')
 
   ax.grid()
 
-  # print(model.explained_variance_ratio_)
+  if domain_kind_index > 0:
+    ax.set_xlabel('PC1')
+
+  if domain_kind_index % 2 == 0:
+    ax.set_ylabel('PC2')
+
+  print(model.explained_variance_ratio_)
   # print(model.components_.shape)
 
 
@@ -93,6 +107,7 @@ for ax in bar_axs.flat:
 for ax in bar_axs[:, 1:].flat:
   ax.yaxis.set_tick_params(left=False)
 
+scatter_fig.legend()
 
 
 with (shared.output_path / 'residues_pca.png').open('wb') as file:

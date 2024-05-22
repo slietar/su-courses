@@ -1,7 +1,7 @@
 import numpy as np
 import pandas as pd
 from matplotlib import pyplot as plt
-from sklearn.cluster import DBSCAN, KMeans
+from sklearn.cluster import KMeans
 from sklearn.preprocessing import scale
 from sklearn.tree import DecisionTreeClassifier
 
@@ -13,45 +13,47 @@ from .residues import all_descriptors, native_descriptors, phenotypes
 # print(all_descriptors)
 print(native_descriptors)
 
-@utils.cache('umap')
+@utils.cache('umap3')
 def compute_umap():
   from umap import UMAP
 
   reducer = UMAP(random_state=0)
-  embedding = reducer.fit_transform(scale(native_descriptors))
+  embedding = reducer.fit_transform(scale(native_descriptors[mask]))
 
   return embedding
 
 
 phenotypes_df = phenotypes.loc[all_descriptors.index]
 pathogenic = phenotypes_df.any(axis='columns')
+# mask = slice(None, None)
+mask = pathogenic
 
 embedding = compute_umap()
 
-clustering_model = KMeans(n_clusters=2, random_state=0)
+clustering_model = KMeans(n_clusters=4, random_state=0)
 # clustering_model = DBSCAN(eps=0.5, min_samples=5)
 classes = clustering_model.fit_predict(embedding)
-classes_series = pd.Series(classes, index=all_descriptors.index, name='class')
+classes_series = pd.Series(classes, index=all_descriptors[mask].index, name='class')
 
 print(classes_series.value_counts().sort_index())
 
 
-classifier = DecisionTreeClassifier(max_depth=1, random_state=0)
-classifier.fit(all_descriptors, classes)
+classifier = DecisionTreeClassifier(max_depth=2, random_state=0)
+classifier.fit(all_descriptors[mask], classes)
 
 
 fig, axs = plt.subplots(ncols=2, nrows=2, sharex=True, sharey=True)
 axs[0, 0].scatter(embedding[:, 0], embedding[:, 1], s=0.5)
 axs[0, 0].set_title('Default')
 
-axs[0, 1].scatter(embedding[:, 0], embedding[:, 1], c=pathogenic, s=0.5)
+axs[0, 1].scatter(embedding[:, 0], embedding[:, 1], c=pathogenic[mask], s=0.5)
 axs[0, 1].set_title('Pathogenic')
 
 axs[1, 0].scatter(embedding[:, 0], embedding[:, 1], c=classes, s=0.5)
 axs[1, 0].set_title('K means')
 
-axs[1, 1].scatter(embedding[:, 0], embedding[:, 1], c=classifier.predict(all_descriptors), s=0.5)
-axs[1, 1].set_title('Decision tree classifier')
+axs[1, 1].scatter(embedding[:, 0], embedding[:, 1], c=classifier.predict(all_descriptors[mask]), s=0.5)
+axs[1, 1].set_title('Decision tree classification')
 
 
 for ax in axs.flat:
