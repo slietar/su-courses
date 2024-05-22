@@ -38,6 +38,8 @@ bar_fig.subplots_adjust(
   wspace=0.05
 )
 
+pc_training_dataframes = list[pd.DataFrame]()
+
 for domain_kind_index, domain_kind in enumerate(data.domain_kinds):
   ax = scatter_fig.add_subplot(2, 2, domain_kind_index + 1)
   target_domains = data.domains[data.domains.kind == domain_kind]
@@ -55,13 +57,18 @@ for domain_kind_index, domain_kind in enumerate(data.domain_kinds):
   model = PCA(n_components=5)
   pc_training = model.fit_transform(scale(training_df))
 
+  pcs_index = pd.Series([f'PC{pc_index + 1}' for pc_index in range(model.components_.shape[0])], name='component')
+  pc_training_df = pd.DataFrame(pc_training, columns=pcs_index, index=training_df.index)
+
+  pc_training_dataframes.append(pc_training_df)
+
   # scale(target_df) model.components_
   # print(target_df.to_numpy().shape, model.components_.shape)
 
   pc = scale(target_df) @ model.components_.T
   pathogenic_mask = all_mutation_info.pathogenic.reindex(target_df.index)
 
-  components = pd.DataFrame(model.components_, columns=training_df.columns, index=[f'PC{pc_index + 1}' for pc_index in range(model.components_.shape[0])])
+  components = pd.DataFrame(model.components_, columns=training_df.columns, index=pcs_index)
 
   # ax.scatter(pc_training[:, 0], pc_training[:, 1], cmap='RdYlBu', s=1.0)
   # ax.scatter(pc[:, 0], pc[:, 1], c=training_residues_mask.reindex(target_df.index), cmap='rainbow', s=0.5)
@@ -110,8 +117,12 @@ for ax in bar_axs[:, 1:].flat:
 scatter_fig.legend()
 
 
-with (shared.output_path / 'residues_pca.png').open('wb') as file:
-  scatter_fig.savefig(file)
+pc_training_dataframe = pd.concat(pc_training_dataframes)
 
-with (shared.output_path / 'residues_pca_components.png').open('wb') as file:
-  bar_fig.savefig(file)
+
+if __name__ == '__main__':
+  with (shared.output_path / 'residues_pca.png').open('wb') as file:
+    scatter_fig.savefig(file)
+
+  with (shared.output_path / 'residues_pca_components.png').open('wb') as file:
+    bar_fig.savefig(file)
