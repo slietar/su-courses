@@ -5,6 +5,7 @@ from types import SimpleNamespace
 import cryptography
 from cryptography import x509
 from cryptography.hazmat import primitives
+from cryptography.hazmat.primitives.serialization import load_pem_public_key
 from cryptography.x509.oid import ExtensionOID, NameOID
 
 
@@ -13,7 +14,9 @@ def load_file(path: Path | str):
     return json.load(file, object_hook=lambda x: SimpleNamespace(**x))
 
 
-# 0186-8263-0596-4099
+with Path('uglix.pem').open('rb') as file:
+  uglix_cert = x509.load_pem_x509_certificate(file.read())
+
 def verify(transaction):
   cert = x509.load_pem_x509_certificate(transaction.card.certificate.encode())
   bank_cert = x509.load_pem_x509_certificate(transaction.card.bank.certificate.encode())
@@ -34,12 +37,6 @@ def verify(transaction):
   if get_name(cert.subject) != data['card-number']:
     return False
 
-  if get_name(bank_cert.issuer) != '__CA__':
-    return False
-
-  if transaction.card.number == '1132-7310-2482-6732':
-    print(transaction.card.bank.certificate)
-
   try:
     ext = bank_cert.extensions.get_extension_for_oid(ExtensionOID.BASIC_CONSTRAINTS)
 
@@ -58,37 +55,26 @@ def verify(transaction):
     return False
 
   try:
+    bank_cert.verify_directly_issued_by(uglix_cert)
     cert.verify_directly_issued_by(bank_cert)
   except (ValueError, cryptography.exceptions.InvalidSignature):
     return False
 
-  # try:
-  #   bank_cert.public_key().verify(
-  #     bank_cert.signature,
-  #     bank_cert.tbs_certificate_bytes
-  #   )
-  # except cryptography.exceptions.InvalidSignature:
-  #   return False
-
-  # store = x509.verification.Store([bank_cert])
-  # builder = x509.verification.PolicyBuilder() #.add_default_policy(x509.verification.BasicConstraints()).build(store)
-  # verifier = builder.build_server_verifier()
-
   return True
 
 
-# assert verify(load_file('samples/valid.json').transaction)
+if 0:
+  assert verify(load_file('samples/valid.json').transaction)
 
-# for path in Path('samples/invalid').glob('*.json'):
-#   print(path)
-#   assert not verify(load_file(path).transaction)
-#   print()
-#   print()
+  for path in Path('samples/invalid').glob('*.json'):
+    print(path)
+    assert not verify(load_file(path).transaction)
+    print()
+    print()
 
 
-batch = load_file('batch.json').batch
+else:
+  batch = load_file('batch.json').batch
 
-print(batch.identifier)
-print(','.join(['1' if verify(transaction) else '0' for transaction in batch.transactions]))
-
-print(batch)
+  print(batch.identifier)
+  print(','.join(['1' if verify(transaction) else '0' for transaction in batch.transactions]))

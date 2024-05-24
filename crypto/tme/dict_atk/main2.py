@@ -12,13 +12,13 @@ def decrypt(input_encrypted: bytes, passphrase: str):
   return proc.stdout
 
 
-input_encrypted = b64decode('U2FsdGVkX18ioJl/79whjAXwWvBMIpris//up9uCmbikcEMYpw2dO0ygrKnxyFrP')
+input_encrypted = b64decode('U2FsdGVkX18t/drfo7yNNmFVZqH2PPoH5dABeBHb4cLDf2xRkZwv1skWmx7CqKPR')
 
 with Path('dictionary.txt').open() as file:
   for raw_word in list(file):
     word = raw_word.strip()
 
     if word:
-      if decrypt(input_encrypted, word) == b'turps funny pavan hammy petri':
+      if decrypt(input_encrypted, word) == b'arson mould quoth route sherd':
         print('>>', word)
         break
