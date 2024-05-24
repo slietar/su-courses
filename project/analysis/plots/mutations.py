@@ -19,10 +19,9 @@ for region_index, region in enumerate(data.interest_regions.itertuples()):
     region.end_position - region.start_position + 1,
     1,
     alpha=0.5,
-    facecolor='grey',
+    facecolor='gray',
     zorder=-1
   ))
-  print(region)
 
 pmap.plot_dataframe(
   (all_mutation_info.pathogenic.astype(int) + all_mutation_info.severe).rename('Présence de\nmutations pathogènes'),
