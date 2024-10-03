@@ -1,7 +1,11 @@
 [submodule "lrc/project"]
-	path = lrc/project
-	url = git@gitlab.com:parakawa/lrc-projet.git
+  path = lrc/project
+  url = git@gitlab.com:parakawa/lrc-projet.git
 
 [submodule "mogpl/project"]
-	path = mogpl/project
-	url = git@gitlab.com:parakawa/mogpl-projet.git
+  path = mogpl/project
+  url = git@gitlab.com:parakawa/mogpl-projet.git
+
+[submodule "internship"]
+  path = internship
+  url = git@github.com:slietar/compressed-dynamical-representations.git
